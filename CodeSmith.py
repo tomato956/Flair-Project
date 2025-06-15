@@ -1,6 +1,6 @@
 import customtkinter as ctk
 
-#アプリ本体のクラス
+# アプリ本体のクラス
 class CodeSmithApp(ctk.CTk):
     def __init__(self):
         super().__init__(fg_color="#1F1F1F")
@@ -16,7 +16,7 @@ class CodeSmithApp(ctk.CTk):
 
         self.bind("<Button>", self.click)
         
-        #/左サイドバーのコード
+        #/ 左サイドバーのコード
         self.blocks = ["row", "none", "text", "if", "while", "for", "true", "false"]
         
         self.sidebar = ctk.CTkFrame(
@@ -35,27 +35,30 @@ class CodeSmithApp(ctk.CTk):
         for block in self.blocks:
             btn = ctk.CTkButton(self.sidebar, text=block, command=lambda b=block: self.add_block_to_canvas(b))
             btn.pack(pady=5, padx=10, fill="x")
-        #\
+        #\ 
 
-        #/メインバー（右のバー）のコード
-        self.mainbar = ctk.CTkFrame(self, fg_color="#222222")
+        #/ メインバー（右のバー）のコード
+        self.mainbar = ctk.CTkScrollableFrame(self, fg_color="#222222")
         self.mainbar.grid(row=0, column=1, sticky="nsew")
         self.mainbar.grid_columnconfigure(0, weight=1)
-        #\
+        # マウスホイールのイベントをバインド
+        # 77行目にある
+        self.mainbar.bind_all("<MouseWheel>", self.on_mousewheel)
+        #\ 
 
         self.frames = []
 
-    #ブロックをクリックしたときのメソッド
+    # ブロックをクリックしたときのメソッド
     def add_block_to_canvas(self, block_name):
         if block_name == self.blocks[0]:
-            #Myflameでフレームを作る
+            # Myflameでフレームを作る
             self.frame = Myflame(master=self.mainbar, frames=self.frames)
-            self.frame_padx = 10 #self.frame.gridのpadxの値
+            self.frame_padx = 10 # self.frame.gridのpadxの値
             self.frame.grid(row=self.frames.__len__(), column=0, padx=self.frame_padx, sticky="ew")
             self.frames.append(self.frame)
             self.frames
 
-    #chickされた時のメゾット    
+    # chickされた時のメゾット    
     def click(self, event):
         # event.x, event.y はウィンドウ（self）内での座標
         for frame in self.frames:
@@ -70,11 +73,17 @@ class CodeSmithApp(ctk.CTk):
                 self.frame_select.configure(border_color="#4A4A4A")
                 break
 
+    # マウスホイールのイベントを処理するメソッド
+    def on_mousewheel(self, event):
+        # マウスホイールの回転量に応じてスクロール
+        self.mainbar._parent_canvas.yview_scroll(int(-1*(event.delta/2)), "units")
+        # mainbarだけがスクロールし、他のウィジェットや親フレームにはイベントが伝わらないようにする。
+        return "break"
 
-#フレームの処理をするクラス
+# フレームの処理をするクラス
 class Myflame(ctk.CTkFrame):
     def __init__(self, master, frames,**kwargs):
-        self.my_border_width = 2 #border_widthの値を変数にする winfoで調べられないため
+        self.my_border_width = 2 # border_widthの値を変数にする winfoで調べられないため
         self.frames = frames
         super().__init__(
             master, 
@@ -85,9 +94,9 @@ class Myflame(ctk.CTkFrame):
             height=200, 
             **kwargs
         )
-        self.grid_propagate(False) #高さを固定
+        self.grid_propagate(False) # 高さを固定
         frame_text = len(frames) + 1
-        self.frame_number_label = ctk.CTkLabel(master=self, text=frame_text, text_color="#3D3D3D")
+        self.frame_number_label = ctk.CTkLabel(master=self, text=frame_text, text_color="#7B7B7B")
         self.frame_number_label.grid(row=0, column=0, padx=self.my_border_width, pady=self.my_border_width)
 
 
