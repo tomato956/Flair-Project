@@ -15,9 +15,10 @@ class CodeSmithApp(ctk.CTk):
         self.grid_columnconfigure(1, weight=1)
 
         self.bind("<Button>", self.click)
+
+        self.FONT = ("Meiryo", 15) # フォントの設定
         
         #/ 左サイドバーのコード
-        self.blocks = ["row", "none", "text", "if", "while", "for", "true", "false"]
         
         self.sidebar = ctk.CTkFrame(
         self, 
@@ -29,11 +30,22 @@ class CodeSmithApp(ctk.CTk):
         )
         self.sidebar.grid(row=0, column=0, sticky="ns")
         self.sidebar.grid_columnconfigure(0, weight=1)
+
+        # サイドバーのブロックのリスト
+        self.blocks = [
+            "row", "text", "if", "while", "for", "true", "false", "none", "return", "function"
+            ]
+
         for row in range(len(self.blocks)+1): #サイドバーのすべての行を可変にした。
-            self.sidebar.grid_rowconfigure(row ,weight=1)
+            self.sidebar.grid_rowconfigure(row ,weight=1)  
 
         for block in self.blocks:
-            btn = ctk.CTkButton(self.sidebar, text=block, command=lambda b=block: self.add_block_to_canvas(b))
+            btn = ctk.CTkButton(
+                self.sidebar, 
+                text=block, 
+                font=self.FONT, 
+                command=lambda b=block: self.add_block_to_canvas(b)
+                )
             btn.pack(pady=5, padx=10, fill="x")
         #\ 
 
@@ -50,15 +62,25 @@ class CodeSmithApp(ctk.CTk):
 
     # ブロックをクリックしたときのメソッド
     def add_block_to_canvas(self, block_name):
-        if block_name == self.blocks[0]:
-            # Myflameでフレームを作る
-            self.frame = Myflame(master=self.mainbar, frames=self.frames)
+        if block_name == self.blocks[0]: # rowブロック
+            # フレーム番号を計算
+            frame_number = len(self.frames) + 1
+            # MyFrameでフレームを作る（番号を渡す）
+            self.frame = MyFrame(master=self.mainbar, frames=self.frames, font=self.FONT, number=frame_number)
             self.frame_padx = 10 # self.frame.gridのpadxの値
             self.frame.grid(row=self.frames.__len__(), column=0, padx=self.frame_padx, sticky="ew")
             self.frames.append(self.frame)
             self.frames
 
-    # chickされた時のメゾット    
+        if block_name == self.blocks[1]: # textブロック
+            if not hasattr(self, 'select_frame') or self.select_frame is None:
+                return
+            else:
+                # 選択されたフレームにテキストブロックを追加
+                self.select_frame.add_text_block()
+
+
+    # clickされた時のメソッド
     def click(self, event):
         # event.x, event.y はウィンドウ（self）内での座標
         for frame in self.frames:
@@ -67,10 +89,10 @@ class CodeSmithApp(ctk.CTk):
             x = frame.winfo_rootx()
             w = frame.winfo_width()
             if y <= event.y_root < y + h and x <= event.x_root < x + w:
-                self.frame_select = frame
+                self.select_frame = frame # 選択されたフレームを保存
                 for f in self.frames:
                     f.configure(border_color="#222222")
-                self.frame_select.configure(border_color="#4A4A4A")
+                self.select_frame.configure(border_color="#4A4A4A")
                 break
 
     # マウスホイールのイベントを処理するメソッド
@@ -81,23 +103,48 @@ class CodeSmithApp(ctk.CTk):
         return "break"
 
 # フレームの処理をするクラス
-class Myflame(ctk.CTkFrame):
-    def __init__(self, master, frames,**kwargs):
-        self.my_border_width = 2 # border_widthの値を変数にする winfoで調べられないため
-        self.frames = frames
+class MyFrame(ctk.CTkFrame):
+
+    # 初期化メソッド
+    def __init__(self, master, frames, font, number, **kwargs):  # numberを追加
+        # 値を受け取る　変数を定義する
+        self.my_frame_border_width = 2 # border_widthの値を変数にする winfoで調べられないため
+        self.frames = frames # フレームのリストを受け取る
+        self.FONT = font # フォントを受け取る　文字は変えないため大文字にする
+
         super().__init__(
             master, 
             fg_color="#222222", 
             corner_radius=0, 
             border_color="#222222", 
-            border_width=self.my_border_width, 
+            border_width=self.my_frame_border_width, 
             height=200, 
             **kwargs
         )
         self.grid_propagate(False) # 高さを固定
-        frame_text = len(frames) + 1
-        self.frame_number_label = ctk.CTkLabel(master=self, text=frame_text, text_color="#7B7B7B")
-        self.frame_number_label.grid(row=0, column=0, padx=self.my_border_width, pady=self.my_border_width)
+
+        #/ フレームに番号（ラベル）を追加
+        frame_text = number  # ここを変更
+        self.frame_number_label = ctk.CTkLabel(
+            master=self, text=frame_text, text_color="#7B7B7B", font=self.FONT, 
+            )
+        self.grid_rowconfigure(0, weight=1)
+        self.frame_number_label.grid(
+            row=0, column=0, padx=self.my_frame_border_width
+            )
+        #\
+
+    def add_text_block(self):
+        text_block = ctk.CTkTextbox(
+            master=self, 
+            height=150, 
+            width=200, 
+            font=self.FONT, 
+            )
+        text_block.grid(
+            row=0, column=1, padx=10
+        )
+
 
 
 if __name__ == "__main__":
