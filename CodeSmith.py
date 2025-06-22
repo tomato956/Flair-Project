@@ -39,6 +39,7 @@ class CodeSmithApp(ctk.CTk):
         for row in range(len(self.blocks)+1): #サイドバーのすべての行を可変にした。
             self.sidebar.grid_rowconfigure(row ,weight=1)  
 
+        # サイドバーにブロックのボタンを追加
         for block in self.blocks:
             btn = ctk.CTkButton(
                 self.sidebar, 
