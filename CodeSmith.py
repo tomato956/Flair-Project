@@ -21,7 +21,7 @@ class CodeSmithApp(ctk.CTk):
         self.select_block = None
 
         #/ 左サイドバーのコード
-        self.sidebar = ctk.CTkFrame(
+        self.sidebar = ctk.CTkScrollableFrame(
             self,
             width=150,
             fg_color="#1F1F1F",
@@ -31,6 +31,8 @@ class CodeSmithApp(ctk.CTk):
         )
         self.sidebar.grid(row=0, column=0, sticky="ns")
         self.sidebar.grid_columnconfigure(0, weight=1)
+        # サイドバーのマウスホイールバインド
+        self.sidebar.bind("<MouseWheel>", self.sidebar_on_mousewheel)
 
         self.blocks = [
             "row", "block", "text", "if", "while", "for", "true", "false", "none", "return", "function"
@@ -47,13 +49,24 @@ class CodeSmithApp(ctk.CTk):
                 command=lambda b=block: self.add_block_to_canvas(b)
             )
             btn.pack(pady=5, padx=10, fill="x")
+        
+        # サイドバーにエントリーと%ラベルを横並びで配置
+        percent_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        percent_frame.pack(pady=10, padx=10, anchor="w")
+
+        self.change_frame_size = Change_Frame_Size_Entry(percent_frame, width=60)
+        self.change_frame_size.pack(side="left")
+
+        percent_label = ctk.CTkLabel(percent_frame, text="%", font=self.FONT)
+        percent_label.pack(side="left", padx=(5, 0))
         #\
 
         #/ メインバー（右のバー）のコード
         self.mainbar = ctk.CTkScrollableFrame(self, fg_color="#222222")
         self.mainbar.grid(row=0, column=1, sticky="nsew")
         self.mainbar.grid_columnconfigure(0, weight=1)
-        self.mainbar.bind_all("<MouseWheel>", self.on_mousewheel)
+        # メインバーのマウスホイールバインド
+        self.mainbar.bind("<MouseWheel>", self.mainbar_on_mousewheel)
         #\
 
         self.frames = []
@@ -74,14 +87,17 @@ class CodeSmithApp(ctk.CTk):
         # クリックされた位置にあるフレームを選択するfor文
         # self.frames内にあるフレームを順にwinfoで位置を把握しif文で確かめていく
         for frame in self.frames:
+            for block in frame.blocks:
+                block.configure(border_color="#222222")
+        for frame in self.frames:
             y = frame.winfo_rooty()
             h = frame.winfo_height()
             x = frame.winfo_rootx()
             w = frame.winfo_width()
+            self.select_frame = frame
             if y <= event.y_root < y + h and x <= event.x_root < x + w:
                 # クリックされてブロックが選択された場合はまた確かめる
                 # ブロックが選択されていなかったらフレームを選択する
-                self.select_frame = frame
                 if frame.blocks:
                     for block in frame.blocks:
                         y = block.winfo_rooty()
@@ -90,19 +106,32 @@ class CodeSmithApp(ctk.CTk):
                         w = block.winfo_width()
                         if y <= event.y_root < y + h and x <= event.x_root < x + w:
                             self.select_block = block
-                            for b in frame.blocks:
-                                b.configure(border_color="#222222")
                             block.configure(border_color="#4A4A4A")
-                            return
                 # 選択されたフレームのスタイルを変更
                 for f in self.frames:
                     f.configure(border_color="#222222")
                 frame.configure(border_color="#4A4A4A")
                 return
 
-    def on_mousewheel(self, event):
-        self.mainbar._parent_canvas.yview_scroll(int(-1 * (event.delta / 2)), "units")
-        return "break"
+    def sidebar_on_mousewheel(self, event):
+        y = self.sidebar.winfo_rooty()
+        h = self.sidebar.winfo_height()
+        x = self.sidebar.winfo_rootx()
+        w = self.sidebar.winfo_width()
+        if y <= event.y_root < y + h and x <= event.x_root < x + w: #範囲内にあるか
+            self.sidebar._parent_canvas.yview_scroll(int(-1 * (event.delta / 2)), "units")
+            return
+        return
+
+    def mainbar_on_mousewheel(self, event):
+        y = self.mainbar.winfo_rooty()
+        h = self.mainbar.winfo_height()
+        x = self.mainbar.winfo_rootx()
+        w = self.mainbar.winfo_width()
+        if y <= event.y_root < y + h and x <= event.x_root < x + w: #範囲内にあるか
+            self.mainbar._parent_canvas.yview_scroll(int(-1 * (event.delta)), "units")
+            return
+        return
 
 
 class MyFrame(ctk.CTkFrame):
@@ -154,6 +183,21 @@ class MyBlock(ctk.CTkFrame):
             fg_color="#222222", 
             **kwargs
             )
+
+
+class Change_Frame_Size_Entry(ctk.CTkEntry):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        vcmd = (self.register(self._validate), "%P")
+        self.configure(validate="key", validatecommand=vcmd)
+
+    def _validate(self, P):
+        if P == "":
+            return True
+        if P.isdigit():
+            value = int(P)
+            return 0 <= value <= 100
+        return False
 
 if __name__ == "__main__":
     app = CodeSmithApp()
