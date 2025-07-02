@@ -82,53 +82,61 @@ class CodeSmithApp(ctk.CTk):
         elif block_name == "block" and self.select_frame:
             self.select_frame.add_block()
 
+        elif block_name == "text" and self.select_block:
+            self.select_block.add_text()
+
     # clickされた時のメソッド
     def click(self, event):
-        # クリックされた位置にあるフレームを選択するfor文
-        # self.frames内にあるフレームを順にwinfoで位置を把握しif文で確かめていく
-        for frame in self.frames:
-            for block in frame.blocks:
-                block.configure(border_color="#222222")
-        for frame in self.frames:
-            y = frame.winfo_rooty()
-            h = frame.winfo_height()
-            x = frame.winfo_rootx()
-            w = frame.winfo_width()
-            self.select_frame = frame
-            if y <= event.y_root < y + h and x <= event.x_root < x + w:
-                # クリックされてブロックが選択された場合はまた確かめる
-                # ブロックが選択されていなかったらフレームを選択する
-                if frame.blocks:
-                    for block in frame.blocks:
-                        y = block.winfo_rooty()
-                        h = block.winfo_height()
-                        x = block.winfo_rootx()
-                        w = block.winfo_width()
-                        if y <= event.y_root < y + h and x <= event.x_root < x + w:
-                            self.select_block = block
-                            block.configure(border_color="#4A4A4A")
+        # search_mouse_cursor関数を使って、マウスカーソルの位置を確認
+        if search_mouse_cursor(event=event, master=self.sidebar):
+            # サイドバーがクリックされた場合は何もしない
+            return
+        for master_frame in self.frames:
+            if search_mouse_cursor(event=event, master=master_frame):
+                self.select_frame = master_frame
                 # 選択されたフレームのスタイルを変更
-                for f in self.frames:
-                    f.configure(border_color="#222222")
-                frame.configure(border_color="#4A4A4A")
+                for all_frame in self.frames:
+                    all_frame.configure(border_color="#222222")
+                master_frame.configure(border_color="#4A4A4A")
+                if master_frame.frame_blocks:
+                    # すべてのブロックのスタイルを元に戻す
+                    for all_frame in self.frames:
+                        for all_block in all_frame.frame_blocks:
+                            all_block.configure(border_color="#4A4A4A")
+                    # クリックされたブロックを選択する
+                    for master_block in master_frame.frame_blocks:
+                        if search_mouse_cursor(event=event, master=master_block):
+                            self.select_block = master_block
+                            master_block.configure(border_color="#7B7B7B")
+                            return
+                
+                for all_frame in self.frames:
+                        for all_block in all_frame.frame_blocks:
+                            all_block.configure(border_color="#4A4A4A")
+                # ブロックの選択を解除
+                self.select_block = None
                 return
+        # すべての選択を解除
+        self.select_frame = None
+        self.select_block = None
+        # すべてのフレームの枠線を元に戻す
+        for all_frame in self.frames:
+            all_frame.configure(border_color="#222222")
+        # すべてのブロックの枠線を元に戻す
+        for all_frame in self.frames:
+            for all_block in all_frame.frame_blocks:
+                all_block.configure(border_color="#4A4A4A")
 
+    # サイドバーのマウスホイールを検出するメソッド
     def sidebar_on_mousewheel(self, event):
-        y = self.sidebar.winfo_rooty()
-        h = self.sidebar.winfo_height()
-        x = self.sidebar.winfo_rootx()
-        w = self.sidebar.winfo_width()
-        if y <= event.y_root < y + h and x <= event.x_root < x + w: #範囲内にあるか
+        if search_mouse_cursor(event=event, master=self.sidebar):
             self.sidebar._parent_canvas.yview_scroll(int(-1 * (event.delta / 2)), "units")
             return
         return
 
+    # メインバーのマウスホイールを検出するメソッド
     def mainbar_on_mousewheel(self, event):
-        y = self.mainbar.winfo_rooty()
-        h = self.mainbar.winfo_height()
-        x = self.mainbar.winfo_rootx()
-        w = self.mainbar.winfo_width()
-        if y <= event.y_root < y + h and x <= event.x_root < x + w: #範囲内にあるか
+        if search_mouse_cursor(event=event, master=self.mainbar):
             self.mainbar._parent_canvas.yview_scroll(int(-1 * (event.delta)), "units")
             return
         return
@@ -141,7 +149,7 @@ class MyFrame(ctk.CTkFrame):
         self.FONT = font
         self.height = 200
         self.number = number
-        self.blocks = []
+        self.frame_blocks = []
 
         super().__init__(
             master,
@@ -168,9 +176,9 @@ class MyFrame(ctk.CTkFrame):
         self.frame_number_label.grid(row=0, column=0, padx=10, pady=self.my_frame_border_width+5, sticky="nsw")  # ← 左に縦中央で表示
 
     def add_block(self):
-        new_block = MyBlock(master=self, blocks=self.blocks, font=self.FONT, height=self.height)
-        new_block.grid(row=0, column=len(self.blocks)+1, padx=10, pady=self.my_frame_border_width)
-        self.blocks.append(new_block)
+        new_block = MyBlock(master=self, blocks=self.frame_blocks, font=self.FONT, height=self.height)
+        new_block.grid(row=0, column=len(self.frame_blocks)+1, padx=10, pady=self.my_frame_border_width)
+        self.frame_blocks.append(new_block)
 
 class MyBlock(ctk.CTkFrame):
     def __init__(self, master, blocks, font, **kwargs):
@@ -178,11 +186,22 @@ class MyBlock(ctk.CTkFrame):
         self.FONT = font
         super().__init__(
             master, 
-            border_color="#222222", 
+            border_color="#4A4A4A", 
             border_width=1,
             fg_color="#222222", 
             **kwargs
             )
+
+    def add_text(self):
+        # !作り途中
+        new_text = ctk.CTkTextbox(
+            master=self,
+            fg_color="#222222",
+            border_color="#4A4A4A",
+            font=self.FONT
+        )
+        new_text.pack(padx=0, pady=0, fill="both", expand=True)
+        # !作り途中
 
 
 class Change_Frame_Size_Entry(ctk.CTkEntry):
@@ -198,6 +217,18 @@ class Change_Frame_Size_Entry(ctk.CTkEntry):
             value = int(P)
             return 0 <= value <= 100
         return False
+
+
+# 共有関数
+def search_mouse_cursor(event, master):
+    y = master.winfo_rooty()
+    h = master.winfo_height()
+    x = master.winfo_rootx()
+    w = master.winfo_width()
+    if y <= event.y_root < y + h and x <= event.x_root < x + w:  # 範囲内にあるか
+        return True
+    return False
+
 
 if __name__ == "__main__":
     app = CodeSmithApp()
