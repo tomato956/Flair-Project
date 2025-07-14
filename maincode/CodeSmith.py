@@ -1,5 +1,6 @@
 import customtkinter as ctk
 import tkinter.filedialog
+from PIL import Image  # 画像処理のためにPILをインポート
 
 
 # 変数、関数の定義
@@ -42,16 +43,18 @@ class CodeSmithApp(ctk.CTk):
         menubar = ctk.CTkFrame(
             self, 
             fg_color="#1C1C1C",
-            width=30,
+            width=60,
             corner_radius=0
             )
         menubar.grid(row=0, column=0, sticky="nsw")
-        # メニューバーにボタンを追加
-        block_area = ctk.CTkFrame(
-            menubar,
-            fg_color="#646464",
-        )
-        block_area.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+        menubar.grid_propagate(False)
+
+        # メニューバー画像を追加
+        file_icon = Image.open("image/menubar/file_icon.png")
+        file_icon = ctk.CTkImage(light_image=file_icon, dark_image=file_icon, size=(55,55))
+
+        menu_label = ctk.CTkLabel(menubar, image=file_icon, text="")
+        menu_label.grid(row=0, column=0, padx=5, pady=5)
 
         #/ 左サイドバーのコード
         self.sidebar = ctk.CTkScrollableFrame(
