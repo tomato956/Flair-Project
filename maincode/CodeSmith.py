@@ -42,12 +42,16 @@ class CodeSmithApp(ctk.CTk):
         menubar = ctk.CTkFrame(
             self, 
             fg_color="#1C1C1C",
-            width=150,
+            width=30,
             corner_radius=0
             )
         menubar.grid(row=0, column=0, sticky="nsw")
-        open_button = ctk.CTkButton(menubar, text="Open File", command=self.open_file)
-        open_button.pack(side="left", padx=5, pady=2)
+        # メニューバーにボタンを追加
+        block_area = ctk.CTkFrame(
+            menubar,
+            fg_color="#646464",
+        )
+        block_area.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
         #/ 左サイドバーのコード
         self.sidebar = ctk.CTkScrollableFrame(
