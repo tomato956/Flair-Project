@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import tkinter.filedialog
 from PIL import Image  # 画像処理のためにPILをインポート
+import os
 
 
 # 変数、関数の定義
@@ -49,12 +50,24 @@ class CodeSmithApp(ctk.CTk):
         menubar.grid(row=0, column=0, sticky="nsw")
         menubar.grid_propagate(False)
 
-        # メニューバー画像を追加
-        file_icon = Image.open("image/menubar/file_icon.png")
-        file_icon = ctk.CTkImage(light_image=file_icon, dark_image=file_icon, size=(55,55))
+        # menubar.grid_rowconfigure(0, weight=1)
+        menubar.grid_columnconfigure(0, weight=1)
 
-        menu_label = ctk.CTkLabel(menubar, image=file_icon, text="")
-        menu_label.grid(row=0, column=0, padx=5, pady=5)
+        # メニューバー画像を追加
+        menubar_children = [
+            "file_icon.png",
+            "block_icon.png",
+        ]
+
+        # ** 次はクリック用のフレームを作る **
+        for i, icon_name in enumerate(menubar_children):
+            image_file = Image.open(f"image/menubar/{icon_name}")
+            image = ctk.CTkImage(light_image=image_file, dark_image=image_file, size=(30,30))
+            image_frame = ctk.CTkFrame(master=menubar, fg_color="transparent")
+            image_frame.grid(row=i, column=0, pady=5,sticky="nsew")
+            image_frame.grid_propagate(False)
+            menu_label = ctk.CTkLabel(master=image_frame, image=image, text="")
+            menu_label.pack(fill="both", expand=True)
 
         #/ 左サイドバーのコード
         self.sidebar = ctk.CTkScrollableFrame(
