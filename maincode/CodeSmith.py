@@ -12,12 +12,17 @@ frames = []
 FONT = ("Noto Sans JP", 15)  # フォントの設定
 
 # グローバル関数
-def search_mouse_cursor(event, master):
+def search_mouse_cursor(event, master, **kwargs):
     y = master.winfo_rooty()
     h = master.winfo_height()
     x = master.winfo_rootx()
     w = master.winfo_width()
-    if y <= event.y_root < y + h and x <= event.x_root < x + w:  # 範囲内にあるか
+    padx, pady = 0, 0  # デフォルト値
+    if "padx" in kwargs:
+        padx = kwargs["padx"]
+    if "pady" in kwargs:
+        pady = kwargs["pady"]
+    if y - pady <= event.y_root < y + h + pady and x - padx <= event.x_root < x + w + padx:  # 範囲内にあるか
         return True
     return False
 
@@ -41,33 +46,37 @@ class CodeSmithApp(ctk.CTk):
 
         self.bind("<Button>", self.click)
 
-        menubar = ctk.CTkFrame(
+        #/ メニューバーのコード
+        self.menubar = ctk.CTkFrame(
             self, 
             fg_color="#1C1C1C",
             width=60,
             corner_radius=0
             )
-        menubar.grid(row=0, column=0, sticky="nsw")
-        menubar.grid_propagate(False)
+        self.menubar.grid(row=0, column=0, sticky="nsw")
+        self.menubar.grid_propagate(False)
 
         # menubar.grid_rowconfigure(0, weight=1)
-        menubar.grid_columnconfigure(0, weight=1)
+        self.menubar.grid_columnconfigure(0, weight=1)
 
         # メニューバー画像を追加
-        menubar_children = [
+        self.menubar_children = [
             "file_icon.png",
             "block_icon.png",
         ]
+        self.menubar_icon_frames = []
+        self.select_menubar_icon_frame = None
 
-        # ** 次はクリック用のフレームを作る **
-        for i, icon_name in enumerate(menubar_children):
+        for i, icon_name in enumerate(self.menubar_children):
             image_file = Image.open(f"image/menubar/{icon_name}")
             image = ctk.CTkImage(light_image=image_file, dark_image=image_file, size=(30,30))
-            image_frame = ctk.CTkFrame(master=menubar, fg_color="transparent")
-            image_frame.grid(row=i, column=0, pady=5,sticky="nsew")
-            image_frame.grid_propagate(False)
-            menu_label = ctk.CTkLabel(master=image_frame, image=image, text="")
-            menu_label.pack(fill="both", expand=True)
+            icon_frame = ctk.CTkFrame(master=self.menubar, fg_color="transparent", corner_radius=0, height=100)
+            icon_frame.grid(row=i, column=0, sticky="nsew")
+            icon_frame.pack_propagate(False)
+            self.menubar_icon_frames.append(icon_frame)
+            menu_label = ctk.CTkLabel(master=icon_frame, image=image, text="")
+            menu_label.pack(fill="both", expand=True, padx=5, pady=5)
+        #\
 
         #/ 左サイドバーのコード
         self.sidebar = ctk.CTkScrollableFrame(
@@ -84,7 +93,7 @@ class CodeSmithApp(ctk.CTk):
         self.sidebar.bind("<MouseWheel>", self.sidebar_on_mousewheel)
 
         self.sidebar_blocks = [
-            "frame", "block", "if", "while", "for", "true", "false", "none", "return", "function"
+            "frame", "block", "none", "if", "while", "for", "true", "false", "return", "function"
         ]
 
         for idx, block in enumerate(self.sidebar_blocks):
@@ -145,52 +154,74 @@ class CodeSmithApp(ctk.CTk):
 
         elif block_name == "block" and select_frame:
             select_frame.add_block() # フレームにブロックを追加
-
-    # clickされた時のメソッド
+    
+    # クリックイベントのメソッド
+    # 説明
+    # search_mouse_cursor関数は、指定したウィジェットがクリックしているかどうかを確認します。
+    # search_mouse_cursor(event, master)
+    # masterは、指定するウィジェット
+    # returnは、クリックしている場合はTrue、そうでない場合はFalse
+    # kwargsにはpadxとpadyがある
+    # padxは、ウィジェットの左右の余白を指定する。
+    # padyは、ウィジェットの上下の余白を指定する。
+    # これを指定することで余白部分もクリック判定になる。
     def click(self, event):
         global select_frame, select_block
         # search_mouse_cursor関数を使って、マウスカーソルの位置を確認
         if search_mouse_cursor(event=event, master=self.sidebar):
             # サイドバーがクリックされた場合は何もしない
             return
-        for master_frame in frames:
-            if search_mouse_cursor(event=event, master=master_frame):
-                select_frame = master_frame
-                # 選択されたフレームのスタイルを変更
-                for all_frame in frames:
-                    all_frame.configure(border_color="#222222")
-                master_frame.configure(border_color="#4A4A4A")
-                if master_frame.frame_blocks:
-                    # すべてのブロックのスタイルを元に戻す
+        if search_mouse_cursor(event=event, master=self.mainbar):
+            for master_frame in frames:
+                if search_mouse_cursor(event=event, master=master_frame):
+                    select_frame = master_frame
+                    # 選択されたフレームのスタイルを変更
                     for all_frame in frames:
-                        for all_block in all_frame.frame_blocks:
-                            all_block.configure(border_color="#4A4A4A")
-                    # クリックされたブロックを選択する
-                    for master_block in master_frame.frame_blocks:
-                        if search_mouse_cursor(event=event, master=master_block):
-                            select_block = master_block
-                            master_block.configure(border_color="#7B7B7B")
-                            master_block.textbox.focus_set()  # テキストボックスがある場合に文字入力状態にする
-                            return
-
-                for all_frame in frames:
-                        for all_block in all_frame.frame_blocks:
-                            all_block.configure(border_color="#4A4A4A")
-                # ブロックの選択を解除
-                select_block = None
-                app.focus_set()  # アプリ全体にフォーカスを戻す
-                return
-        # すべての選択を解除
-        select_frame = None
-        select_block = None
-        app.focus_set()  # アプリ全体にフォーカスを戻す
-        # すべてのフレームの枠線を元に戻す
-        for all_frame in frames:
-            all_frame.configure(border_color="#222222")
-        # すべてのブロックの枠線を元に戻す
-        for all_frame in frames:
-            for all_block in all_frame.frame_blocks:
-                all_block.configure(border_color="#4A4A4A")
+                        all_frame.configure(border_color="#222222")
+                    master_frame.configure(border_color="#4A4A4A")
+                    if master_frame.frame_blocks:
+                        # すべてのブロックのスタイルを元に戻す
+                        for all_frame in frames:
+                            for all_block in all_frame.frame_blocks:
+                                all_block.configure(border_color="#4A4A4A")
+                        # クリックされたブロックを選択する
+                        for master_block in master_frame.frame_blocks:
+                            if search_mouse_cursor(event=event, master=master_block):
+                                select_block = master_block
+                                master_block.configure(border_color="#7B7B7B")
+                                return
+                    for all_frame in frames:
+                            for all_block in all_frame.frame_blocks:
+                                all_block.configure(border_color="#4A4A4A")
+                    # ブロックの選択を解除
+                    select_block = None
+                    app.focus_set()  # アプリ全体にフォーカスを戻す
+                    return
+            # すべての選択を解除
+            select_frame = None
+            select_block = None
+            app.focus_set()  # アプリ全体にフォーカスを戻す
+            # すべてのフレームの枠線を元に戻す
+            for all_frame in frames:
+                all_frame.configure(border_color="#222222")
+            # すべてのブロックの枠線を元に戻す
+            for all_frame in frames:
+                for all_block in all_frame.frame_blocks:
+                    all_block.configure(border_color="#4A4A4A")
+        if search_mouse_cursor(event=event, master=self.menubar):
+            for master_icon_frame in self.menubar_icon_frames:
+                if search_mouse_cursor(event=event, master=master_icon_frame):
+                    self.select_menubar_icon_frame = master_icon_frame
+                    # 選択されたアイコンのスタイルを変更
+                    for all_icon_frame in self.menubar_icon_frames:
+                        all_icon_frame.configure(fg_color="transparent")
+                    master_icon_frame.configure(fg_color="#4A4A4A")
+                    return
+            # ほかの所にクリックされた場合
+            self.select_menubar_icon_frame = None
+            for all_icon_frame in self.menubar_icon_frames:
+                all_icon_frame.configure(fg_color="transparent")
+            return
 
     # サイドバーのマウスホイールを検出するメソッド
     def sidebar_on_mousewheel(self, event):
@@ -205,7 +236,6 @@ class CodeSmithApp(ctk.CTk):
             self.mainbar._parent_canvas.yview_scroll(int(-1 * (event.delta)), "units")
             return
         return
-
 
 class MyFrame(ctk.CTkFrame):
     def __init__(self, master, number, **kwargs):
