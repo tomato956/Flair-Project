@@ -46,7 +46,7 @@ class CodeSmithApp(ctk.CTk):
 
         self.bind("<Button>", self.click)
 
-        #/ メニューバーのコード
+        #**/ メニューバーのコード
         self.menubar = ctk.CTkFrame(
             self, 
             fg_color="#1C1C1C",
@@ -76,9 +76,9 @@ class CodeSmithApp(ctk.CTk):
             self.menubar_icon_frames.append(icon_frame)
             menu_label = ctk.CTkLabel(master=icon_frame, image=image, text="")
             menu_label.pack(fill="both", expand=True, padx=5, pady=5)
-        #\
+        #**\
 
-        #/ 左サイドバーのコード
+        #**/ 左サイドバーのコード
         self.sidebar = ctk.CTkScrollableFrame(
             self,
             width=150,
@@ -92,10 +92,44 @@ class CodeSmithApp(ctk.CTk):
         # サイドバーのマウスホイールバインド
         self.sidebar.bind("<MouseWheel>", self.sidebar_on_mousewheel)
 
-        self.sidebar_blocks = [
-            "frame", "block", "none", "if", "while", "for", "true", "false", "return", "function"
-        ]
+        self.select_menubar_icon_frame_clean()   # 初期状態では何も表示しない
+        #**\
 
+        #**/ メインバー（右のバー）のコード
+        self.mainbar = ctk.CTkScrollableFrame(self, fg_color="#222222")
+        self.mainbar.grid(row=0, column=2, sticky="nsew")
+        self.mainbar.grid_columnconfigure(0, weight=1)
+        # メインバーのマウスホイールバインド
+        self.mainbar.bind("<MouseWheel>", self.mainbar_on_mousewheel)
+        #**\
+
+    #**/サイドバーの関数
+    # noneの時のサイドバーを表示
+    def select_menubar_icon_frame_clean(self):
+        # サイドバーの内容をクリア
+        for widget in self.sidebar.winfo_children():
+            widget.destroy()
+        self.sidebar_blocks = []
+
+    # file_iconの時のサイドバーを表示
+    def select_menubar_icon_frame__file_icon(self):
+        self.select_menubar_icon_frame_clean()  # サイドバーをクリア
+        self.sidebar_blocks = ["open_file", "save_file"]
+        for idx, block in enumerate(self.sidebar_blocks):
+            block_button = ctk.CTkButton(
+                self.sidebar,
+                text=block,
+                font=FONT,
+                command=lambda block=block: self.add_file_to_canvas(block)
+            )
+            block_button.grid(row=idx, column=0, sticky="ew", padx=5, pady=5)
+
+    # block_iconの時のサイドバーを表示
+    def select_menubar_icon_frame__block_icon(self):
+        self.select_menubar_icon_frame_clean()  # サイドバーをクリア
+        self.sidebar_blocks = [
+        "frame", "block", "none", "if", "while", "for", "true", "false", "return", "function"
+        ]
         for idx, block in enumerate(self.sidebar_blocks):
             block_button = ctk.CTkButton(
                 self.sidebar,
@@ -114,16 +148,15 @@ class CodeSmithApp(ctk.CTk):
 
         percent_label = ctk.CTkLabel(percent_frame, text="%", font=FONT)
         percent_label.pack(side="left", padx=(5, 0))
-        #\
+    #**\
 
-        #/ メインバー（右のバー）のコード
-        self.mainbar = ctk.CTkScrollableFrame(self, fg_color="#222222")
-        self.mainbar.grid(row=0, column=2, sticky="nsew")
-        self.mainbar.grid_columnconfigure(0, weight=1)
-        # メインバーのマウスホイールバインド
-        self.mainbar.bind("<MouseWheel>", self.mainbar_on_mousewheel)
-        #\
+    def add_file_to_canvas(self, block_name):
+        if block_name == "open_file":
+            self.open_file()
+        elif block_name == "save_file":
+            self.save_file()
 
+    # ファイルを開くメソッド
     def open_file(self):
         filepath = tkinter.filedialog.askopenfilename(
             filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
@@ -136,6 +169,10 @@ class CodeSmithApp(ctk.CTk):
                 textbox = frames[0].frame_blocks[0].block_elements[0]
                 textbox.delete("1.0", "end")
                 textbox.insert("1.0", content)
+
+    # ファイルを保存するメソッド
+    def save_file(self):
+        pass
 
     # ブロックをクリックしたときのメソッド
     def add_block_to_canvas(self, block_name):
@@ -166,7 +203,7 @@ class CodeSmithApp(ctk.CTk):
     # padyは、ウィジェットの上下の余白を指定する。
     # これを指定することで余白部分もクリック判定になる。
     def click(self, event):
-        global select_frame, select_block
+        global select_frame, select_block, sidebar_scene
         # search_mouse_cursor関数を使って、マウスカーソルの位置を確認
         if search_mouse_cursor(event=event, master=self.sidebar):
             # サイドバーがクリックされた場合は何もしない
@@ -211,16 +248,17 @@ class CodeSmithApp(ctk.CTk):
         if search_mouse_cursor(event=event, master=self.menubar):
             for master_icon_frame in self.menubar_icon_frames:
                 if search_mouse_cursor(event=event, master=master_icon_frame):
+                    if master_icon_frame == self.menubar_icon_frames[0] and not self.select_menubar_icon_frame == self.menubar_icon_frames[0]:
+                        self.select_menubar_icon_frame__file_icon()
+                    if master_icon_frame == self.menubar_icon_frames[1] and not self.select_menubar_icon_frame == self.menubar_icon_frames[1]:
+                        self.select_menubar_icon_frame__block_icon()
                     self.select_menubar_icon_frame = master_icon_frame
                     # 選択されたアイコンのスタイルを変更
                     for all_icon_frame in self.menubar_icon_frames:
                         all_icon_frame.configure(fg_color="transparent")
                     master_icon_frame.configure(fg_color="#4A4A4A")
                     return
-            # ほかの所にクリックされた場合
-            self.select_menubar_icon_frame = None
-            for all_icon_frame in self.menubar_icon_frames:
-                all_icon_frame.configure(fg_color="transparent")
+            # ほかの所にクリックされた場合はなにもしない
             return
 
     # サイドバーのマウスホイールを検出するメソッド
