@@ -1,7 +1,8 @@
 import customtkinter as ctk
 import tkinter.filedialog
 from PIL import Image  # 画像処理のためにPILをインポート
-import os
+import json
+from pathlib import Path
 
 
 # 変数、関数の定義
@@ -9,6 +10,7 @@ import os
 select_frame = None
 select_block = None
 frames = []
+textbox = None
 FONT = ("Noto Sans JP", 15)  # フォントの設定
 
 # グローバル関数
@@ -114,7 +116,12 @@ class CodeSmithApp(ctk.CTk):
     # file_iconの時のサイドバーを表示
     def select_menubar_icon_frame__file_icon(self):
         self.select_menubar_icon_frame_clean()  # サイドバーをクリア
-        self.sidebar_blocks = ["open_file", "save_file"]
+        self.sidebar_blocks = [
+            "open_txt_file",
+            "open_file", 
+            "save_file", 
+            ]
+        self.file_list = []
         for idx, block in enumerate(self.sidebar_blocks):
             block_button = ctk.CTkButton(
                 self.sidebar,
@@ -123,6 +130,35 @@ class CodeSmithApp(ctk.CTk):
                 command=lambda block=block: self.add_file_to_canvas(block)
             )
             block_button.grid(row=idx, column=0, sticky="ew", padx=5, pady=5)
+        
+        new_text_label = ctk.CTkLabel(
+            self.sidebar,
+            text="file_list",
+            font=FONT,
+            text_color="#A8A8A8"
+        )
+        new_text_label.grid(row=len(self.sidebar_blocks), column=0, sticky="w", padx=10, pady=5)
+
+    def update_file_list(self, **kwargs):
+        # 既存のファイルリストをクリア
+        for widget in self.sidebar.winfo_children():
+            if isinstance(widget, ctk.CTkLabel) and not widget.cget("text") == "file_list":
+                widget.destroy()
+
+        if "file_path" in kwargs:
+            file_path = Path(kwargs["file_path"])
+            if file_path not in self.file_list:
+                self.file_list.append(file_path)
+
+        # 新しいファイルリストを表示
+        for idx, file_path in enumerate(self.file_list):
+            file_label = ctk.CTkLabel(
+                self.sidebar,
+                text=file_path.stem,
+                font=FONT,
+                text_color="#A8A8A8"
+            )
+            file_label.grid(row=len(self.sidebar_blocks) + idx + 2, column=0, sticky="w", padx=10, pady=2)
 
     # block_iconの時のサイドバーを表示
     def select_menubar_icon_frame__block_icon(self):
@@ -151,13 +187,16 @@ class CodeSmithApp(ctk.CTk):
     #**\
 
     def add_file_to_canvas(self, block_name):
-        if block_name == "open_file":
+        if block_name == "open_txt_file":
+            self.open_txt_file()
+        elif block_name == "open_file":
             self.open_file()
         elif block_name == "save_file":
             self.save_file()
 
     # ファイルを開くメソッド
-    def open_file(self):
+    def open_txt_file(self):
+        global textbox
         filepath = tkinter.filedialog.askopenfilename(
             filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
         )
@@ -165,14 +204,69 @@ class CodeSmithApp(ctk.CTk):
             with open(filepath, "r", encoding="utf-8") as f:
                 content = f.read()
             # 例: 最初のフレーム・ブロックのテキストボックスに内容を表示
-            if frames and frames[0].frame_blocks and frames[0].frame_blocks[0].block_elements:
-                textbox = frames[0].frame_blocks[0].block_elements[0]
+            if frames and frames[0].frame_blocks:
                 textbox.delete("1.0", "end")
                 textbox.insert("1.0", content)
+    
+    # ファイルを開くメソッド
+    def open_file(self):
+
+        filepath = tkinter.filedialog.askopenfilename(
+            filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")]
+        )
+        if not filepath:
+            return  # キャンセルされたら何もしない
+
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        # 既存のフレームを削除
+        for frame in frames:
+            frame.destroy()
+        frames.clear()
+
+        # 復元
+        for frame_data in data:
+            new_frame = MyFrame(master=self.mainbar, number=len(frames)+1)
+            new_frame.grid(row=len(frames), column=0, padx=10, sticky="ew")
+            frames.append(new_frame)
+
+            for block_texts in frame_data:
+                new_frame.add_block()
+                block = new_frame.frame_blocks[-1]
+                for widget in block.winfo_children():
+                    if isinstance(widget, ctk.CTkTextbox):
+                        widget.delete("1.0", "end")
+                        for text in block_texts:
+                            widget.insert("1.0", text)
+        self.update_file_list(file_path=filepath)  # ファイルリストを更新
 
     # ファイルを保存するメソッド
     def save_file(self):
-        pass
+        data = []
+
+        for frame in frames:
+            frame_data = []
+            for block in frame.frame_blocks:
+                block_data = []
+                for element in block.winfo_children():
+                    if isinstance(element, ctk.CTkTextbox):
+                        block_data.append(element.get("1.0", "end").strip())
+                frame_data.append(block_data)
+            data.append(frame_data)
+
+        # ユーザーに保存先とファイル名を指定させる
+        filepath = tkinter.filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")]
+        )
+        if not filepath:
+            return  # ユーザーがキャンセルした場合
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+        self.update_file_list(file_path=filepath)  # ファイルリストを更新
 
     # ブロックをクリックしたときのメソッド
     def add_block_to_canvas(self, block_name):
@@ -310,7 +404,7 @@ class MyFrame(ctk.CTkFrame):
         )
 
     def add_block(self):
-        global select_block
+        global select_block, textbox
         new_block = MyBlock(master=self, height=self.height)
         new_block.grid(row=0, column=len(self.frame_blocks)+1, padx=10, pady=self.my_frame_border_width)
         self.frame_blocks.append(new_block)
@@ -329,7 +423,7 @@ class MyFrame(ctk.CTkFrame):
         )
         new_text.pack(padx=2, pady=2, fill="both", expand=True)
         new_text.focus_set()  # 文字入力状態にする
-        self.textbox = new_text  # テキストボックスを保存
+        textbox = new_text  # テキストボックスを保存
 
 class MyBlock(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
