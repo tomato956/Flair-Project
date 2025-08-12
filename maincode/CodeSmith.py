@@ -67,7 +67,10 @@ class CodeSmithApp(ctk.CTk):
             "block_icon.png",
         ]
         self.menubar_icon_frames = []
+        self.sidebar_file_frame_list = []
+        self.sidebar_scene = None
         self.select_menubar_icon_frame = None
+        self.select_file_frame = None
 
         for i, icon_name in enumerate(self.menubar_children):
             image_file = Image.open(f"image/menubar/{icon_name}")
@@ -95,6 +98,7 @@ class CodeSmithApp(ctk.CTk):
         self.sidebar.bind("<MouseWheel>", self.sidebar_on_mousewheel)
 
         self.select_menubar_icon_frame_clean()   # 初期状態では何も表示しない
+        self.file_list = []
         #**\
 
         #**/ メインバー（右のバー）のコード
@@ -108,6 +112,7 @@ class CodeSmithApp(ctk.CTk):
     #**/サイドバーの関数
     # noneの時のサイドバーを表示
     def select_menubar_icon_frame_clean(self):
+        self.sidebar_scene = None
         # サイドバーの内容をクリア
         for widget in self.sidebar.winfo_children():
             widget.destroy()
@@ -115,13 +120,13 @@ class CodeSmithApp(ctk.CTk):
 
     # file_iconの時のサイドバーを表示
     def select_menubar_icon_frame__file_icon(self):
+        self.sidebar_scene = "file_icon"
         self.select_menubar_icon_frame_clean()  # サイドバーをクリア
         self.sidebar_blocks = [
             "open_txt_file",
             "open_file", 
             "save_file", 
             ]
-        self.file_list = []
         for idx, block in enumerate(self.sidebar_blocks):
             block_button = ctk.CTkButton(
                 self.sidebar,
@@ -138,12 +143,13 @@ class CodeSmithApp(ctk.CTk):
             text_color="#A8A8A8"
         )
         new_text_label.grid(row=len(self.sidebar_blocks), column=0, sticky="w", padx=10, pady=5)
+        self.update_file_list()
 
     def update_file_list(self, **kwargs):
         # 既存のファイルリストをクリア
-        for widget in self.sidebar.winfo_children():
-            if isinstance(widget, ctk.CTkLabel) and not widget.cget("text") == "file_list":
-                widget.destroy()
+        # for widget in self.sidebar.winfo_children():
+        #     if isinstance(widget, ctk.CTkLabel) and not widget.cget("text") == "file_list":
+        #         widget.destroy()
 
         if "file_path" in kwargs:
             file_path = Path(kwargs["file_path"])
@@ -152,16 +158,30 @@ class CodeSmithApp(ctk.CTk):
 
         # 新しいファイルリストを表示
         for idx, file_path in enumerate(self.file_list):
-            file_label = ctk.CTkLabel(
+            file_frame = ctk.CTkFrame(
                 self.sidebar,
+                fg_color="transparent",
+            )
+            file_frame.grid(row=len(self.sidebar_blocks) + idx + 2, column=0, sticky="ew")
+            file_label = ctk.CTkLabel(
+                file_frame,
                 text=file_path.stem,
                 font=FONT,
                 text_color="#A8A8A8"
             )
-            file_label.grid(row=len(self.sidebar_blocks) + idx + 2, column=0, sticky="w", padx=10, pady=2)
+            file_label.pack()
+            self.sidebar_file_frame_list.append(file_frame)
+            file_frame_open_button = ctk.CTkButton(
+                file_frame,
+                text="open",
+                font=FONT,
+                command=lambda path=file_path: self.open_function(file_path=path)  # ファイルを開く
+            )
+            file_frame_open_button.pack(side="right", padx=5, pady=5)
 
     # block_iconの時のサイドバーを表示
     def select_menubar_icon_frame__block_icon(self):
+        self.sidebar_scene = "block_icon"
         self.select_menubar_icon_frame_clean()  # サイドバーをクリア
         self.sidebar_blocks = [
         "frame", "block", "none", "if", "while", "for", "true", "false", "return", "function"
@@ -217,7 +237,10 @@ class CodeSmithApp(ctk.CTk):
         if not filepath:
             return  # キャンセルされたら何もしない
 
-        with open(filepath, "r", encoding="utf-8") as f:
+        self.open_function(file_path=filepath)
+
+    def open_function(self, file_path):
+        with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         # 既存のフレームを削除
@@ -239,7 +262,7 @@ class CodeSmithApp(ctk.CTk):
                         widget.delete("1.0", "end")
                         for text in block_texts:
                             widget.insert("1.0", text)
-        self.update_file_list(file_path=filepath)  # ファイルリストを更新
+        self.update_file_list(file_path=file_path)  # ファイルリストを更新
 
     # ファイルを保存するメソッド
     def save_file(self):
@@ -297,11 +320,10 @@ class CodeSmithApp(ctk.CTk):
     # padyは、ウィジェットの上下の余白を指定する。
     # これを指定することで余白部分もクリック判定になる。
     def click(self, event):
-        global select_frame, select_block, sidebar_scene
+        global select_frame, select_block
         # search_mouse_cursor関数を使って、マウスカーソルの位置を確認
         if search_mouse_cursor(event=event, master=self.sidebar):
-            # サイドバーがクリックされた場合は何もしない
-            return
+            return  
         if search_mouse_cursor(event=event, master=self.mainbar):
             for master_frame in frames:
                 if search_mouse_cursor(event=event, master=master_frame):
