@@ -71,6 +71,9 @@ class CodeSmithApp(ctk.CTk):
         self.sidebar_scene = None
         self.select_menubar_icon_frame = None
         self.select_file_frame = None
+        #! self.file_displayに入る情報はPathモジュールを使っていなくてファイルのパスがある。
+        #! そのため、.stemなどとりだすことはできない。
+        self.file_display = None
 
         for i, icon_name in enumerate(self.menubar_children):
             image_file = Image.open(f"image/menubar/{icon_name}")
@@ -155,9 +158,18 @@ class CodeSmithApp(ctk.CTk):
             file_path = Path(kwargs["file_path"])
             if file_path not in self.file_list:
                 self.file_list.append(file_path)
+        
+        if self.file_display:
+            file_display = Path(self.file_display)
+        else:
+            file_display = None
 
         # 新しいファイルリストを表示
         for idx, file_path in enumerate(self.file_list):
+            if file_display.name == file_path.name:
+                color = "#FFFFFF"
+            else:
+                color = "#A8A8A8"
             file_frame = ctk.CTkFrame(
                 self.sidebar,
                 fg_color="transparent",
@@ -165,9 +177,9 @@ class CodeSmithApp(ctk.CTk):
             file_frame.grid(row=len(self.sidebar_blocks) + idx + 2, column=0, sticky="ew")
             file_label = ctk.CTkLabel(
                 file_frame,
-                text=file_path.stem,
+                text=file_path.name,
                 font=FONT,
-                text_color="#A8A8A8"
+                text_color=color
             )
             file_label.pack()
             self.sidebar_file_frame_list.append(file_frame)
@@ -262,6 +274,7 @@ class CodeSmithApp(ctk.CTk):
                         widget.delete("1.0", "end")
                         for text in block_texts:
                             widget.insert("1.0", text)
+        self.file_display = file_path
         self.update_file_list(file_path=file_path)  # ファイルリストを更新
 
     # ファイルを保存するメソッド
