@@ -11,7 +11,7 @@ select_frame = None
 select_block = None
 frames = []
 textbox = None
-FONT = ("Noto Sans JP", 15)  # フォントの設定
+FONT = ("Meiryo", 15)  # フォントの設定
 
 # グローバル関数
 def search_mouse_cursor(event, master, **kwargs):
