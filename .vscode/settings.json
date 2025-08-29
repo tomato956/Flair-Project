@@ -1,11 +1,36 @@
 {
-    "python.testing.unittestArgs": [
-        "-v",
-        "-s",
-        ".",
-        "-p",
-        "*test.py"
-    ],
-    "python.testing.pytestEnabled": false,
-    "python.testing.unittestEnabled": true
-}
+        "editor.unicodeHighlight.invisibleCharacters": false,
+        "cmake.configureOnOpen": true,
+        "C_Cpp.default.compilerPath": "c:\\Users\\user\\.vscode\\puroguramu\\1",
+        "files.autoGuessEncoding": true,
+        "workbench.editorAssociations": {
+            "*.exe": "default"
+        },
+        "explorer.confirmDragAndDrop": false,
+        "editor.unicodeHighlight.nonBasicASCII": false,
+        "editor.unicodeHighlight.allowedLocales": {
+            "cs": true
+        },
+        "editor.minimap.renderCharacters": false,
+        "editor.stickyScroll.enabled": false,
+        "editor.unicodeHighlight.ambiguousCharacters": false,
+        "git.enableSmartCommit": true,
+        "github.copilot.enable": {
+            "*": true,
+            "plaintext": false,
+            "markdown": false,
+            "scminput": false,
+            "python": true
+        },
+        "workbench.editor.empty.hint": "hidden",
+        "git.autofetch": true,
+        "github.copilot.nextEditSuggestions.enabled": true,
+        "editor.minimap.enabled": false,
+        "editor.formatOnSave": true,
+        "geminicodeassist.project": "gemini-vscode-470100",
+        "terminal.integrated.defaultProfile.windows": "Windows Terminal",
+        "terminal.integrated.fontFamily": "Source Han Code JP",
+        "terminal.integrated.fontSize": 14,
+        "terminal.integrated.gpuAcceleration": "off",
+        "terminal.integrated.unicodeVersion": "11"
+    }
