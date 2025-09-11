@@ -84,6 +84,24 @@ class CodeSmithApp(ctk.CTk):
             self.menubar_icon_frames.append(icon_frame)
             menu_label = ctk.CTkLabel(master=icon_frame, image=image, text="")
             menu_label.pack(fill="both", expand=True, padx=5, pady=5)
+        #**
+
+        #**/ 左サイドバーのコード
+        self.sidebar = ctk.CTkScrollableFrame(
+            self,
+            width=150,
+            fg_color="#1F1F1F",
+            border_color="#606060",
+            border_width=1,
+            corner_radius=0
+        )
+        self.sidebar.grid(row=0, column=1, sticky="nsw")
+        self.sidebar.grid_columnconfigure(0, weight=1)
+        # サイドバーのマウスホイールバインド
+        self.sidebar.bind("<MouseWheel>", self.sidebar_on_mousewheel)
+
+        self.select_menubar_icon_frame_clean()   # 初期状態では何も表示しない
+        self.file_list = []
         #**\
 
         #**/ 左サイドバーのコード
@@ -107,9 +125,10 @@ class CodeSmithApp(ctk.CTk):
         #**/ メインバー（右のバー）のコード
         self.mainbar = ctk.CTkScrollableFrame(self, fg_color="#222222")
         self.mainbar.grid(row=0, column=2, sticky="nsew")
-        self.mainbar.grid_columnconfigure(0, weight=1)
+        self.mainbar.grid_rowconfigure(0, weight=1)
         # メインバーのマウスホイールバインド
         self.mainbar.bind("<MouseWheel>", self.mainbar_on_mousewheel)
+        self.last_known_height = 0
         #**\
 
     #**/サイドバーの関数
@@ -166,7 +185,7 @@ class CodeSmithApp(ctk.CTk):
 
         # 新しいファイルリストを表示
         for idx, file_path in enumerate(self.file_list):
-            if file_display.name == file_path.name:
+            if file_display and file_display.name == file_path.name:
                 color = "#FFFFFF"
             else:
                 color = "#A8A8A8"
@@ -230,7 +249,7 @@ class CodeSmithApp(ctk.CTk):
     def open_txt_file(self):
         global textbox
         filepath = tkinter.filedialog.askopenfilename(
-            filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
+            filetypes=[("Text Files", "*.txt"), ("All Files", "*.* אמיתי") ]
         )
         if filepath:
             with open(filepath, "r", encoding="utf-8") as f:
@@ -242,9 +261,8 @@ class CodeSmithApp(ctk.CTk):
     
     # ファイルを開くメソッド
     def open_file(self):
-
         filepath = tkinter.filedialog.askopenfilename(
-            filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")]
+            filetypes=[("JSON Files", "*.json"), ("All Files", "*.* אמיתי")]
         )
         if not filepath:
             return  # キャンセルされたら何もしない
@@ -261,9 +279,9 @@ class CodeSmithApp(ctk.CTk):
         frames.clear()
 
         # 復元
-        for frame_data in data:
-            new_frame = MyFrame(master=self.mainbar, number=len(frames)+1)
-            new_frame.grid(row=len(frames), column=0, padx=10, sticky="ew")
+        for i, frame_data in enumerate(data):
+            new_frame = MyFrame(master=self.mainbar, number=i + 1, height=max(200, self.mainbar.winfo_height() - 20))
+            new_frame.grid(row=0, column=i, padx=10, pady=10, sticky="ns")
             frames.append(new_frame)
 
             for block_texts in frame_data:
@@ -294,7 +312,7 @@ class CodeSmithApp(ctk.CTk):
         # ユーザーに保存先とファイル名を指定させる
         filepath = tkinter.filedialog.asksaveasfilename(
             defaultextension=".json",
-            filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")]
+            filetypes=[("JSON Files", "*.json"), ("All Files", "*.* אמיתי אמיתי")]
         )
         if not filepath:
             return  # ユーザーがキャンセルした場合
@@ -308,19 +326,12 @@ class CodeSmithApp(ctk.CTk):
     def add_block_to_canvas(self, block_name):
         global select_frame
         if block_name == "frame":
-            frame_number = len(frames) + 1
-            new_frame = MyFrame(master=self.mainbar, number=frame_number)
-            new_frame.grid(row=len(frames), column=0, padx=10, sticky="ew")
+            height = max(200, self.mainbar.winfo_height() - 20)
+            new_frame = MyFrame(master=self.mainbar, number=len(frames) + 1, height=height)
+            new_frame.grid(row=0, column=len(frames), padx=10, pady=10, sticky="ns")
+            
+            # 新しいフレームをリストの末尾に追加
             frames.append(new_frame)
-            for all_frame in frames:
-                all_frame.configure(border_color="#222222")  # すべてのフレームの枠線を元に戻す 
-                for all_block in all_frame.frame_blocks:
-                    all_block.configure(border_color="#4A4A4A")  # すべてのブロックの枠線を元に戻す
-            new_frame.configure(border_color="#4A4A4A")  # 新しいフレームの枠線を変更
-            select_frame = new_frame  # 新しいフレームを選択状態にする 
-
-        elif block_name == "block" and select_frame:
-            select_frame.add_block() # フレームにブロックを追加
     
     # クリックイベントのメソッド
     # 説明
@@ -407,24 +418,21 @@ class CodeSmithApp(ctk.CTk):
 class MyFrame(ctk.CTkFrame):
     def __init__(self, master, number, **kwargs):
         self.my_frame_border_width = 2
-        self.height = 200
         self.number = number
         self.frame_blocks = []
 
         super().__init__(
             master,
+            width=200,
             fg_color="#222222",
             corner_radius=0,
             border_color="#222222",
             border_width=self.my_frame_border_width,
-            height=self.height,
             **kwargs
         )
         self.grid_propagate(False)
 
-        # 高さ200pxの中央に配置するための設定
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=0)  # ラベル
+        self.grid_columnconfigure(0, weight=1)
 
         # ラベル（左上だと不自然なので縦中央にする）
         self.frame_number_label = ctk.CTkLabel(
@@ -435,13 +443,13 @@ class MyFrame(ctk.CTkFrame):
         )
         # 左に縦中央で表示
         self.frame_number_label.grid(
-            row=0, column=0, padx=10, pady=self.my_frame_border_width+5, sticky="nsw"
+            row=0, column=0, padx=10, pady=self.my_frame_border_width+5, sticky="nw"
         )
 
     def add_block(self):
         global select_block, textbox
-        new_block = MyBlock(master=self, height=self.height)
-        new_block.grid(row=0, column=len(self.frame_blocks)+1, padx=10, pady=self.my_frame_border_width)
+        new_block = MyBlock(master=self, height=200)
+        new_block.grid(row=len(self.frame_blocks) + 1, column=0, padx=10, pady=self.my_frame_border_width, sticky="ew")
         self.frame_blocks.append(new_block)
         for all_frame in frames:
             for all_block in all_frame.frame_blocks:
