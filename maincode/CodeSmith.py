@@ -40,6 +40,8 @@ class CodeSmithApp(ctk.CTk):
         self.title("CodeSmithApp")
         self.geometry("600x400")
 
+        self.frame_height = 200
+
         self.grid_rowconfigure(0, weight=1)
         # ← カラム設定を修正
         self.grid_columnconfigure(0, weight=0)  # menubar
@@ -74,6 +76,7 @@ class CodeSmithApp(ctk.CTk):
         #! self.file_displayに入る情報はPathモジュールを使っていなくてファイルのパスがある。
         #! そのため、.stemなどとりだすことはできない。
         self.file_display = None
+        self.frame_height = 200
 
         for i, icon_name in enumerate(self.menubar_children):
             image_file = Image.open(f"image/menubar/{icon_name}")
@@ -262,7 +265,7 @@ class CodeSmithApp(ctk.CTk):
     # ファイルを開くメソッド
     def open_file(self):
         filepath = tkinter.filedialog.askopenfilename(
-            filetypes=[("JSON Files", "*.json"), ("All Files", "*.* אמיתי")]
+            filetypes=[("JSON Files", "*.json"), ("All Files", "*.* אמיתי אמיתי אמיתי")]
         )
         if not filepath:
             return  # キャンセルされたら何もしない
@@ -278,10 +281,11 @@ class CodeSmithApp(ctk.CTk):
             frame.destroy()
         frames.clear()
 
+        self.update_idletasks()
         # 復元
         for i, frame_data in enumerate(data):
-            new_frame = MyFrame(master=self.mainbar, number=i + 1, height=max(200, self.mainbar.winfo_height() - 20))
-            new_frame.grid(row=0, column=i, padx=10, pady=10, sticky="ns")
+            new_frame = MyFrame(master=self.mainbar, number=i + 1, height=self.frame_height)
+            new_frame.grid(row=0, column=i, padx=10, pady=10, sticky="n")
             frames.append(new_frame)
 
             for block_texts in frame_data:
@@ -312,7 +316,7 @@ class CodeSmithApp(ctk.CTk):
         # ユーザーに保存先とファイル名を指定させる
         filepath = tkinter.filedialog.asksaveasfilename(
             defaultextension=".json",
-            filetypes=[("JSON Files", "*.json"), ("All Files", "*.* אמיתי אמיתי")]
+            filetypes=[("JSON Files", "*.json"), ("All Files", "*.* אמיתי אמיתי אמיתי אמיתי")]
         )
         if not filepath:
             return  # ユーザーがキャンセルした場合
@@ -326,12 +330,16 @@ class CodeSmithApp(ctk.CTk):
     def add_block_to_canvas(self, block_name):
         global select_frame
         if block_name == "frame":
-            height = max(200, self.mainbar.winfo_height() - 20)
+            self.update_idletasks()
+            height = 200
             new_frame = MyFrame(master=self.mainbar, number=len(frames) + 1, height=height)
-            new_frame.grid(row=0, column=len(frames), padx=10, pady=10, sticky="ns")
+            new_frame.grid(row=0, column=len(frames), padx=10, pady=10, sticky="n")
             
             # 新しいフレームをリストの末尾に追加
             frames.append(new_frame)
+        elif block_name == "block":
+            if select_frame:
+                select_frame.add_block()
     
     # クリックイベントのメソッド
     # 説明
@@ -451,6 +459,13 @@ class MyFrame(ctk.CTkFrame):
         new_block = MyBlock(master=self, height=200)
         new_block.grid(row=len(self.frame_blocks) + 1, column=0, padx=10, pady=self.my_frame_border_width, sticky="ew")
         self.frame_blocks.append(new_block)
+
+        # 高さを更新する必要があるか確認
+        self.update_idletasks()
+        required_height = new_block.winfo_y() + new_block.winfo_height() + self.my_frame_border_width
+        if required_height > self.cget("height"):
+            self.configure(height=required_height)
+
         for all_frame in frames:
             for all_block in all_frame.frame_blocks:
                 all_block.configure(border_color="#4A4A4A")
