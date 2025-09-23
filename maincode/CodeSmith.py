@@ -431,14 +431,14 @@ class MyFrame(ctk.CTkFrame):
 
         super().__init__(
             master,
-            width=200,
             fg_color="#222222",
             corner_radius=0,
             border_color="#222222",
             border_width=self.my_frame_border_width,
             **kwargs
         )
-        self.grid_propagate(False)
+        # 子ウィジェットに合わせてサイズが自動で変わるようにする
+        self.grid_propagate(True)
 
         self.grid_columnconfigure(0, weight=1)
 
@@ -453,18 +453,16 @@ class MyFrame(ctk.CTkFrame):
         self.frame_number_label.grid(
             row=0, column=0, padx=10, pady=self.my_frame_border_width+5, sticky="nw"
         )
+        
+        self.grid_propagate(False)
 
     def add_block(self):
         global select_block, textbox
-        new_block = MyBlock(master=self, height=200)
+        new_block = MyBlock(master=self)
         new_block.grid(row=len(self.frame_blocks) + 1, column=0, padx=10, pady=self.my_frame_border_width, sticky="ew")
         self.frame_blocks.append(new_block)
 
-        # 高さを更新する必要があるか確認
-        self.update_idletasks()
-        required_height = new_block.winfo_y() + new_block.winfo_height() + self.my_frame_border_width
-        if required_height > self.cget("height"):
-            self.configure(height=required_height)
+        # 高さは子要素に合わせて自動調整させる（手動調整を削除）
 
         for all_frame in frames:
             for all_block in all_frame.frame_blocks:
@@ -483,19 +481,19 @@ class MyFrame(ctk.CTkFrame):
         new_text.focus_set()  # 文字入力状態にする
         textbox = new_text  # テキストボックスを保存
 
+        self.grid_propagate(True)
+
 class MyBlock(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
-        self.block_width = 200
         self.block_elements = {}
         super().__init__(
             master, 
             border_color="#4A4A4A", 
             border_width=1,
             fg_color="#222222", 
-            width=self.block_width,
             **kwargs
         )
-        self.pack_propagate(False)  # ← 追加: 子ウィジェットで幅が変わらないようにする
+        # デフォルトのサイズ伝播を維持し、子に合わせて自動リサイズ
 
 
 class Change_Frame_Size_Entry(ctk.CTkEntry):
