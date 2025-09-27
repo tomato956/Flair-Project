@@ -333,7 +333,7 @@ class CodeSmithApp(ctk.CTk):
             self.update_idletasks()
             height = 200
             new_frame = MyFrame(master=self.mainbar, number=len(frames) + 1, height=height)
-            new_frame.grid(row=0, column=len(frames), padx=10, pady=10, sticky="n")
+            new_frame.grid(row=0, column=len(frames), padx=10, pady=10, sticky="nsew")
             
             # 新しいフレームをリストの末尾に追加
             frames.append(new_frame)
@@ -459,7 +459,7 @@ class MyFrame(ctk.CTkFrame):
     def add_block(self):
         global select_block, textbox
         new_block = MyBlock(master=self)
-        new_block.grid(row=len(self.frame_blocks) + 1, column=0, padx=10, pady=self.my_frame_border_width, sticky="ew")
+        new_block.grid(row=len(self.frame_blocks) + 1, column=0, padx=10, pady=(self.my_frame_border_width, 10), sticky="ew")
         self.frame_blocks.append(new_block)
 
         # 高さは子要素に合わせて自動調整させる（手動調整を削除）
