@@ -137,6 +137,7 @@ class CodeSmithApp(QMainWindow):
                 button.clicked.connect(self.save_file)
             self.sidebar_layout.addWidget(button)
 
+# ブロックサイドバーの設定
     def setup_block_sidebar(self):
         self.clear_sidebar()
         block_types = ["frame", "block", "none", "if", "while", "for", "true", "false", "return", "function"]
