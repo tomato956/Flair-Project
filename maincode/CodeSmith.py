@@ -1,7 +1,7 @@
 import sys
 import json
 from pathlib import Path
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QFrame, 
     QLabel, QSplitter, QScrollArea, QPushButton, QToolButton, QTextEdit, QFileDialog
@@ -22,6 +22,7 @@ class QtBlock(QFrame):
         layout.addWidget(self.text_edit)
 
 class QtFrame(QFrame):
+    clicked = Signal()
     # QtFrameウィジェットを初期化します。
     def __init__(self, number, parent=None):
         super().__init__(parent)
@@ -36,6 +37,10 @@ class QtFrame(QFrame):
         title_label = QLabel(f"Frame {self.number}")
         title_label.setStyleSheet("color: #AAAAAA; padding: 5px;")
         self.main_layout.addWidget(title_label)
+
+    def mousePressEvent(self, event):
+        self.clicked.emit()
+        super().mousePressEvent(event)
 
     # フレームに新しいブロックを追加します。
     def add_block(self):
@@ -166,6 +171,7 @@ class CodeSmithApp(QMainWindow):
     def add_frame(self):
         frame_number = len(self.frames) + 1
         new_frame = QtFrame(frame_number)
+        new_frame.clicked.connect(lambda: self.select_frame(new_frame))
         self.mainbar_layout.addWidget(new_frame)
         self.frames.append(new_frame)
         self.select_frame(new_frame)
@@ -221,9 +227,20 @@ class CodeSmithApp(QMainWindow):
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
-    # マウスプレスイベントを処理して、フレームの選択を解除します。
-    def mousePressEvent(self, event):
-        self.select_frame(None)
+    # マウスプレスイベントを処理して、いろんなクリックしたウィジェットの親をたどって見つけることができる。
+    # 簡単に言えば、クリックしたウィジェットを決めた範囲で見つけれる
+    def mousePressEvent(self, event, search_widget):
+        widget = QApplication.widgetAt(event.globalPos())
+        is_on_search_widget = False
+        while widget is not None:
+            if isinstance(widget, search_widget):
+                is_on_search_widget = True
+                break
+            widget = widget.parent()
+
+        if not is_on_search_widget:
+            self.select_search_widget(None)
+
         super().mousePressEvent(event)
 
 if __name__ == "__main__":
