@@ -10,6 +10,7 @@ from PySide6.QtGui import QPalette, QColor, QIcon
 
 # --- カスタムウィジェット ---
 class QtBlock(QFrame):
+    # QtBlockウィジェットを初期化します。
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setStyleSheet("background-color: #333333; border: 1px solid #4A4A4A; border-radius: 4px;")
@@ -21,6 +22,7 @@ class QtBlock(QFrame):
         layout.addWidget(self.text_edit)
 
 class QtFrame(QFrame):
+    # QtFrameウィジェットを初期化します。
     def __init__(self, number, parent=None):
         super().__init__(parent)
         self.number = number
@@ -35,6 +37,7 @@ class QtFrame(QFrame):
         title_label.setStyleSheet("color: #AAAAAA; padding: 5px;")
         self.main_layout.addWidget(title_label)
 
+    # フレームに新しいブロックを追加します。
     def add_block(self):
         block = QtBlock()
         self.main_layout.addWidget(block)
@@ -43,6 +46,7 @@ class QtFrame(QFrame):
 
 # --- メインアプリケーション ---
 class CodeSmithApp(QMainWindow):
+    # メインアプリケーションウィンドウを初期化します。
     def __init__(self):
         super().__init__()
         self.setWindowTitle("CodeSmithApp (Qt)")
@@ -51,10 +55,14 @@ class CodeSmithApp(QMainWindow):
         self.frames = []
         self.selected_frame = None
 
+        # --- スタイル変数 ---
+        self.sidebar_button_color = "#65F4D4"
+
         self.script_dir = Path(__file__).parent.parent
 
         self.init_ui()
 
+    # ユーザーインターフェースを初期化します。
     def init_ui(self):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -110,6 +118,7 @@ class CodeSmithApp(QMainWindow):
         main_layout.addWidget(self.menubar)
         main_layout.addWidget(splitter)
 
+    # メニューバーにツールボタンを追加します。
     def add_tool_button(self, layout, icon_name, tooltip):
         button = QToolButton()
         icon_path = self.script_dir / "image" / "menubar" / icon_name
@@ -120,12 +129,14 @@ class CodeSmithApp(QMainWindow):
         layout.addWidget(button)
         return button
 
+    # サイドバーのコンテンツをクリアします。
     def clear_sidebar(self):
         for i in reversed(range(self.sidebar_layout.count())): 
             widget = self.sidebar_layout.itemAt(i).widget()
             if widget is not None:
                 widget.setParent(None)
 
+    # ファイル操作サイドバーをセットアップします。
     def setup_file_sidebar(self):
         self.clear_sidebar()
         file_ops = ["Open File", "Save File"]
@@ -133,10 +144,12 @@ class CodeSmithApp(QMainWindow):
             button = QPushButton(op)
             if op == "Open File":
                 button.clicked.connect(self.open_file)
-            elif op == "Save File":
+            if op == "Save File":
                 button.clicked.connect(self.save_file)
+            button.setStyleSheet(f"background-color: {self.sidebar_button_color}; color: #000000; border: 1px solid #555555; border-radius: 4px; padding: 5px;")
             self.sidebar_layout.addWidget(button)
 
+    # ブロック操作サイドバーをセットアップします。
     def setup_block_sidebar(self):
         self.clear_sidebar()
         block_types = ["frame", "block", "none", "if", "while", "for", "true", "false", "return", "function"]
@@ -144,10 +157,12 @@ class CodeSmithApp(QMainWindow):
             button = QPushButton(block_type)
             if block_type == "frame":
                 button.clicked.connect(self.add_frame)
-            elif block_type == "block":
+            if block_type == "block":
                 button.clicked.connect(self.add_block_to_selected_frame)
+            button.setStyleSheet(f"background-color: {self.sidebar_button_color}; color: #000000; border: 1px solid #555555; border-radius: 4px; padding: 5px;")
             self.sidebar_layout.addWidget(button)
 
+    # メインバーに新しいフレームを追加します。
     def add_frame(self):
         frame_number = len(self.frames) + 1
         new_frame = QtFrame(frame_number)
@@ -155,10 +170,12 @@ class CodeSmithApp(QMainWindow):
         self.frames.append(new_frame)
         self.select_frame(new_frame)
 
+    # 現在選択されているフレームにブロックを追加します。
     def add_block_to_selected_frame(self):
         if self.selected_frame:
             self.selected_frame.add_block()
 
+    # 選択されたフレームをハイライトします。
     def select_frame(self, frame_to_select):
         self.selected_frame = frame_to_select
         for frame in self.frames:
@@ -167,6 +184,7 @@ class CodeSmithApp(QMainWindow):
             else:
                 frame.setStyleSheet("background-color: #2C2C2C; border: 1px solid #4A4A4A; border-radius: 5px;")
 
+    # JSONファイルを開き、データを読み込みます。
     def open_file(self):
         filepath, _ = QFileDialog.getOpenFileName(self, "Open File", "", "JSON Files (*.json);;All Files (*)")
         if not filepath:
@@ -186,6 +204,7 @@ class CodeSmithApp(QMainWindow):
                 if block_texts:
                     new_block.text_edit.setText(block_texts[0])
 
+    # 現在のデータをJSONファイルに保存します。
     def save_file(self):
         filepath, _ = QFileDialog.getSaveFileName(self, "Save File", "", "JSON Files (*.json);;All Files (*)")
         if not filepath:
@@ -202,6 +221,7 @@ class CodeSmithApp(QMainWindow):
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
+    # マウスプレスイベントを処理して、フレームの選択を解除します。
     def mousePressEvent(self, event):
         self.select_frame(None)
         super().mousePressEvent(event)
@@ -220,11 +240,6 @@ if __name__ == "__main__":
     dark_palette.setColor(QPalette.ColorRole.Text, QColor("white"))
     dark_palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
     dark_palette.setColor(QPalette.ColorRole.ButtonText, QColor("white"))
-    dark_palette.setColor(QPalette.ColorRole.BrightText, QColor("red"))
-    dark_palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
-    dark_palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
-    dark_palette.setColor(QPalette.ColorRole.HighlightedText, QColor("black"))
-    app.setPalette(dark_palette)
 
     window = CodeSmithApp()
     window.show()
