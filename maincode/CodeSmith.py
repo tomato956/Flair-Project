@@ -22,7 +22,6 @@ class QtBlock(QFrame):
         layout.addWidget(self.text_edit)
 
 class QtFrame(QFrame):
-    clicked = Signal()
     # QtFrameウィジェットを初期化します。
     def __init__(self, number, parent=None):
         super().__init__(parent)
@@ -37,10 +36,6 @@ class QtFrame(QFrame):
         title_label = QLabel(f"Frame {self.number}")
         title_label.setStyleSheet("color: #AAAAAA; padding: 5px;")
         self.main_layout.addWidget(title_label)
-
-    def mousePressEvent(self, event):
-        self.clicked.emit()
-        super().mousePressEvent(event)
 
     # フレームに新しいブロックを追加します。
     def add_block(self):
@@ -59,6 +54,7 @@ class CodeSmithApp(QMainWindow):
 
         self.frames = []
         self.selected_frame = None
+        self.selected_block = None
 
         # --- スタイル変数 ---
         self.sidebar_button_color = "#65F4D4"
@@ -171,7 +167,6 @@ class CodeSmithApp(QMainWindow):
     def add_frame(self):
         frame_number = len(self.frames) + 1
         new_frame = QtFrame(frame_number)
-        new_frame.clicked.connect(lambda: self.select_frame(new_frame))
         self.mainbar_layout.addWidget(new_frame)
         self.frames.append(new_frame)
         self.select_frame(new_frame)
@@ -189,6 +184,10 @@ class CodeSmithApp(QMainWindow):
                 frame.setStyleSheet("background-color: #2C2C2C; border: 2px solid #4A90E2; border-radius: 5px;")
             else:
                 frame.setStyleSheet("background-color: #2C2C2C; border: 1px solid #4A4A4A; border-radius: 5px;")
+
+    # すべてのフレームの選択を解除します。
+    def deselect_all_frames(self):
+        self.select_frame(None)
 
     # JSONファイルを開き、データを読み込みます。
     def open_file(self):
@@ -227,21 +226,32 @@ class CodeSmithApp(QMainWindow):
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
-    # マウスプレスイベントを処理して、いろんなクリックしたウィジェットの親をたどって見つけることができる。
-    # 簡単に言えば、クリックしたウィジェットを決めた範囲で見つけれる
-    def mousePressEvent(self, event, search_widget):
+    # クリックされたウィジェットまたはその親をたどって、指定された型のウィジェットを見つけます。
+    def get_ancestor_widget(self, event, widget_type):
         widget = QApplication.widgetAt(event.globalPos())
-        is_on_search_widget = False
         while widget is not None:
-            if isinstance(widget, search_widget):
-                is_on_search_widget = True
-                break
+            if isinstance(widget, widget_type):
+                return widget
             widget = widget.parent()
+        return None
 
-        if not is_on_search_widget:
-            self.select_search_widget(None)
+    def mousePressEvent(self, event):
+        # クリックされた場所にあるQtFrameを探す
+        clicked_frame = self.get_ancestor_widget(event, QtFrame)
+
+        # QtFrameまたはその子ウィジェットがクリックされた場合
+        if clicked_frame:
+            self.select_frame(clicked_frame)
+        # QtFrame以外の場所がクリックされた場合
+        else:
+            # サイドバーのボタン上でなければ選択を解除
+            # （ボタンクリックで選択解除されるのを防ぐ）
+            if not self.get_ancestor_widget(event, (QPushButton, QToolButton)):
+                self.deselect_all_frames()
 
         super().mousePressEvent(event)
+
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
