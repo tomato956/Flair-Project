@@ -1,6 +1,6 @@
-# CodeSmith Project
+# Flair-Project
 
-CodeSmithは、フローチャートを簡単に作成できるビジュアルプログラミング環境を提供するPythonアプリケーションです。フレームとブロックを使用して、視覚的にプログラムやデータを構築することができます。
+Flairは、フローチャートを簡単に作成できるビジュアルプログラミング環境を提供するPythonアプリケーションです。フレームとブロックを使用して、視覚的にプログラムやデータを構築することができます。
 
 ## 機能
 
@@ -38,7 +38,7 @@ CodeSmithは、フローチャートを簡単に作成できるビジュアル�
 
 1. リポジトリをクローン
 ```bash
-git clone https://github.com/misoudon956/CodeSmith-Project.git
+git clone https://github.com/misoudon956/Flair-Project.git
 ```
 
 2. 必要なパッケージをインストール
@@ -50,7 +50,7 @@ pip install customtkinter Pillow
 
 1. プログラムの実行
 ```bash
-python maincode/CodeSmith.py
+python maincode/Flair.py
 ```
 
 2. メニューバーの操作
@@ -69,10 +69,10 @@ python maincode/CodeSmith.py
 
 ## プロジェクト構造
 ```
-CodeSmith Project/
+Flair-Project/
 ├── README.md
 ├── maincode/
-│   └── CodeSmith.py
+│   └── Flair.py
 ├── image/
 │   └── menubar/
 │       ├── block_icon.png
