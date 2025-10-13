@@ -1,6 +1,6 @@
-# CodeSmithプロジェクト
+# Flair-Project
 
-CodeSmithは、フローチャートを簡単作成できるビジュアルプログラミング環境です。PythonアプリケーションとしてGUI、フレーム・ブロック管理、JSON保存・読込機能を搭載。
+Flairは、フローチャートを簡単作成できるビジュアルプログラミング環境です。PythonアプリケーションとしてGUI、フレーム・ブロック管理、JSON保存・読込機能を搭載。
 
 ## 機能
 
@@ -26,7 +26,7 @@ CodeSmithは、フローチャートを簡単作成できるビジュアルプ�
 ## はじめに
 
 1.  **プログラムの実行**
-    - メインだけで実行： `python maincode/CodeSmith.py`
+    - メインだけで実行： `python maincode/Flair.py`
     - 全体を実行： `./run.bat`
 
 ## 使用方法
@@ -46,14 +46,14 @@ CodeSmithは、フローチャートを簡単作成できるビジュアルプ�
 
 ## プロジェクト構造
 ```
-CodeSmith Project/
+Flair-Project/
 ├── README.md
 ├── GEMINI.md
 ├── run.bat
 ├── .editorconfig
 ├── desktop.ini
 ├── maincode/
-│   └── CodeSmith.py
+│   └── Flair.py
 ├── image/
 │   └── menubar/
 │       ├── block_icon.png
@@ -86,7 +86,7 @@ CodeSmith Project/
 ## 変更履歴
 
 ### 2025年10月7日
-- **フレーム選択ロジックの改善 (`maincode/CodeSmith.py`):**
+- **フレーム選択ロジックの改善 (`maincode/Flair.py`):**
     - `mousePressEvent`の処理を全面的に見直し、クリックされたウィジェットの親を辿って`QtFrame`を特定する方式に変更。
     - これにより、フレーム自身やその中の要素をクリックした際に、正しくフレームが選択されるようになった。
     - フレーム外の領域をクリックした際に、すべてのフレームの選択を解除する機能 (`deselect_all_frames`) を実装。
@@ -94,10 +94,10 @@ CodeSmith Project/
 
 
 ### 2025年10月6日
-- **フレーム選択機能の実装 (`maincode/CodeSmith.py`):**
+- **フレーム選択機能の実装 (`maincode/Flair.py`):**
     - フレーム (`QtFrame`) をクリックすることで、そのフレームを選択状態（青い枠線でハイライト）にできるように変更。
     - フレーム以外の領域をクリックすると、選択が解除されるように実装。
-- **汎用クリックイベント処理の検討 (`maincode/CodeSmith.py`):**
+- **汎用クリックイベント処理の検討 (`maincode/Flair.py`):**
     - `mousePressEvent` を、任意のウィジェット(`search_widget`)範囲外のクリックを検知する汎用的な実装に変更する試みが行われた。
     - この実装は、呼び出し先の `select_search_widget` メソッドが未定義であるため、現状では不完全な状態。
 
@@ -105,7 +105,7 @@ CodeSmith Project/
 - **`run.bat`の改善:**
     - `pause`コマンドを削除し、実行後に待機しないように変更。
     - `start /b`を使用し、アプリケーションがバックグラウンドで実行されるように修正。これにより、コマンドプロンプトをブロックせずにアプリを起動できるようになった。
-- **UIの改善 (`maincode/CodeSmith.py`):**
+- **UIの改善 (`maincode/Flair.py`):**
     - サイドバーのボタンにスタイルを適用し、視覚的に分かりやすいデザインに変更。
     - スタイルの競合問題を解決し、色が正しく表示されるように修正。
     - ボタンの背景色を変数 (`self.sidebar_button_color`) で管理するようにリファクタリングし、メンテナンス性を向上。

@@ -45,11 +45,11 @@ class QtFrame(QFrame):
         return block
 
 # --- メインアプリケーション ---
-class CodeSmithApp(QMainWindow):
+class FlairApp(QMainWindow):
     # メインアプリケーションウィンドウを初期化します。
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("CodeSmithApp (Qt)")
+        self.setWindowTitle("FlairApp (Qt)")
         self.setGeometry(100, 100, 800, 600)
 
         self.frames = []
@@ -268,6 +268,8 @@ if __name__ == "__main__":
     dark_palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
     dark_palette.setColor(QPalette.ColorRole.ButtonText, QColor("white"))
 
-    window = CodeSmithApp()
+    window = FlairApp()
     window.show()
     sys.exit(app.exec())
+
+
