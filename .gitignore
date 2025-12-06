@@ -1,0 +1,13 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# IDE specific files
+.vscode/*.code-workspace
+.vscode/*.log
+.vscode/*.bak
+
+# OS generated files
+.DS_Store
+Thumbs.db
