@@ -1,5 +1,6 @@
 import sys
 import json
+import os
 from pathlib import Path
 from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtWidgets import (
@@ -37,6 +38,12 @@ class QtFrame(QFrame):
         title_label.setStyleSheet("color: #AAAAAA; padding: 5px;")
         self.main_layout.addWidget(title_label)
 
+        self.is_resizing = False
+        self.resizing_edge = None
+        self.resize_edge_width = 5
+        self.prev_sibling_widget = None # 前のフレームを格納するため
+        self.setMouseTracking(True)
+
     # フレームに新しいブロックを追加します。
     def add_block(self):
         block = QtBlock()
@@ -44,7 +51,71 @@ class QtFrame(QFrame):
         self.blocks.append(block)
         return block
 
+    def mousePressEvent(self, event):
+        edge = self.get_resize_edge(event.position().toPoint())
+        if event.button() == Qt.LeftButton and edge:
+            self.is_resizing = True
+            self.resizing_edge = edge
+            self.resize_start_pos = event.globalPosition().toPoint()
+            self.original_width = self.width() # 自身の元の幅を格納
+
+            if self.resizing_edge == 'left':
+                # レイアウト内の前のウィジェットを見つける
+                parent_layout = self.parentWidget().layout()
+                my_index = parent_layout.indexOf(self)
+                if my_index > 0:
+                    self.prev_sibling_widget = parent_layout.itemAt(my_index - 1).widget()
+                    self.original_prev_sibling_width = self.prev_sibling_widget.width()
+                else:
+                    self.prev_sibling_widget = None
+        super().mousePressEvent(event)
+    
+    def mouseMoveEvent(self, event):
+        if self.is_resizing:
+            delta = event.globalPosition().toPoint() - self.resize_start_pos
+            
+            if self.resizing_edge == 'right':
+                new_width = self.original_width + delta.x()
+                if new_width > 0:
+                    self.setFixedWidth(new_width)
+            
+            elif self.resizing_edge == 'left' and self.prev_sibling_widget:
+                # 前のフレームの新しい幅
+                new_prev_width = self.original_prev_sibling_width + delta.x()
+                # 現在のフレームの新しい幅
+                new_self_width = self.original_width - delta.x()
+
+                # 両方のフレームの幅が0より大きいことを確認してから適用
+                if new_prev_width > 0 and new_self_width > 0:
+                    self.prev_sibling_widget.setFixedWidth(new_prev_width)
+                    self.setFixedWidth(new_self_width)
+        
+        elif self.get_resize_edge(event.position().toPoint()):
+            self.setCursor(Qt.SizeHorCursor)
+        else:
+            self.unsetCursor()
+        
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and self.is_resizing:
+            self.is_resizing = False
+            self.resizing_edge = None
+            self.prev_sibling_widget = None
+        super().mouseReleaseEvent(event)
+
+    def get_resize_edge(self, pos):
+        # フレームの左端をドラッグすることは、スプリッターをドラッグする概念
+        # そのため、左端をチェックする
+        if self.number > 1 and pos.x() < self.resize_edge_width:
+            return 'left'
+        # 最も右にあるフレームの右端のリサイズも許可する
+        if pos.x() >= self.width() - self.resize_edge_width:
+            return 'right'
+        return None
+
 # --- メインアプリケーション ---
+
 class FlairApp(QMainWindow):
     # メインアプリケーションウィンドウを初期化します。
     def __init__(self):
@@ -228,7 +299,7 @@ class FlairApp(QMainWindow):
 
     # クリックされたウィジェットまたはその親をたどって、指定された型のウィジェットを見つけます。
     def get_ancestor_widget(self, event, widget_type):
-        widget = QApplication.widgetAt(event.globalPos())
+        widget = QApplication.widgetAt(event.globalPosition().toPoint())
         while widget is not None:
             if isinstance(widget, widget_type):
                 return widget
@@ -252,24 +323,31 @@ class FlairApp(QMainWindow):
         super().mousePressEvent(event)
 
 
-
 if __name__ == "__main__":
+    # Set QT_IM_MODULE for Japanese input support
+    os.environ['QT_IM_MODULE'] = 'fcitx' 
+
     app = QApplication(sys.argv)
 
-    app.setStyle("Fusion")
-    dark_palette = QPalette()
-    dark_palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
-    dark_palette.setColor(QPalette.ColorRole.WindowText, QColor("white"))
-    dark_palette.setColor(QPalette.ColorRole.Base, QColor(25, 25, 25))
-    dark_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
-    dark_palette.setColor(QPalette.ColorRole.ToolTipBase, QColor("white"))
-    dark_palette.setColor(QPalette.ColorRole.ToolTipText, QColor("white"))
-    dark_palette.setColor(QPalette.ColorRole.Text, QColor("white"))
-    dark_palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
-    dark_palette.setColor(QPalette.ColorRole.ButtonText, QColor("white"))
+    # # Read and log the QT_IM_MODULE value for debugging
+    # im_module = os.environ.get('QT_IM_MODULE')
+    # temp_dir = Path("/home/tomato956/.gemini/tmp/31a8f51bf6d8ebee52b27e0211d95ad2059460949f68cf9f424b1848985535cb")
+    # debug_file = temp_dir / "qt_im_module.log"
+    # with open(debug_file, "w", encoding="utf-8") as f:
+    #     f.write(f"QT_IM_MODULE: {im_module}")
+
+    # app.setStyle("Fusion")
+    # dark_palette = QPalette()
+    # dark_palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
+    # dark_palette.setColor(QPalette.ColorRole.WindowText, QColor("white"))
+    # dark_palette.setColor(QPalette.ColorRole.Base, QColor(25, 25, 25))
+    # dark_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
+    # dark_palette.setColor(QPalette.ColorRole.ToolTipBase, QColor("white"))
+    # dark_palette.setColor(QPalette.ColorRole.ToolTipText, QColor("white"))
+    # dark_palette.setColor(QPalette.ColorRole.Text, QColor("white"))
+    # dark_palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+    # dark_palette.setColor(QPalette.ColorRole.ButtonText, QColor("white"))
 
     window = FlairApp()
     window.show()
     sys.exit(app.exec())
-
-

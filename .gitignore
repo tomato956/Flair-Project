@@ -1,5 +1,6 @@
 # Python
 .venv/
+.venv_linux/
 __pycache__/
 *.pyc
 
@@ -11,3 +12,5 @@ __pycache__/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+GEMINI.md/
