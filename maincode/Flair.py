@@ -2,10 +2,11 @@ import sys
 import json
 import os
 from pathlib import Path
-from PySide6.QtCore import Qt, QSize, Signal, QRect, QTimer
+from PySide6.QtCore import Qt, QSize, Signal, QRect, QTimer, QEvent
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QFrame, 
-    QLabel, QSplitter, QScrollArea, QPushButton, QToolButton, QTextEdit, QFileDialog
+    QLabel, QSplitter, QScrollArea, QPushButton, QToolButton, QTextEdit, QFileDialog,
+    QScrollBar
 )
 from PySide6.QtGui import QPalette, QColor, QIcon
 
@@ -235,6 +236,8 @@ class FlairApp(QMainWindow):
         main_layout.addWidget(self.menubar)
         main_layout.addWidget(splitter)
 
+        QApplication.instance().installEventFilter(self)
+
     # メニューバーにツールボタンを追加します。
     def add_tool_button(self, layout, icon_name, tooltip):
         button = QToolButton()
@@ -351,21 +354,34 @@ class FlairApp(QMainWindow):
             widget = widget.parent()
         return None
 
-    def mousePressEvent(self, event):
-        # クリックされた場所にあるQtFrameを探す
-        clicked_frame = self.get_ancestor_widget(event, QtFrame)
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Type.MouseButtonPress:
+            if event.button() == Qt.LeftButton:
+                clicked_widget = QApplication.widgetAt(event.globalPosition().toPoint())
+                if not clicked_widget:
+                    self.deselect_all_frames() # Clicked outside the window
+                    return super().eventFilter(watched, event)
 
-        # QtFrameまたはその子ウィジェットがクリックされた場合
-        if clicked_frame:
-            self.select_frame(clicked_frame)
-        # QtFrame以外の場所がクリックされた場合
-        else:
-            # サイドバーのボタン上でなければ選択を解除
-            # （ボタンクリックで選択解除されるのを防ぐ）
-            if not self.get_ancestor_widget(event, (QPushButton, QToolButton)):
-                self.deselect_all_frames()
+                ancestor = clicked_widget
+                clicked_frame = None
+                is_on_interactive_widget = False
 
-        super().mousePressEvent(event)
+                while ancestor is not None:
+                    if isinstance(ancestor, QtFrame):
+                        clicked_frame = ancestor
+                        break 
+                    if isinstance(ancestor, (QPushButton, QToolButton, QScrollBar)):
+                        is_on_interactive_widget = True
+                        break
+                    ancestor = ancestor.parent()
+
+                if clicked_frame:
+                    self.select_frame(clicked_frame)
+                elif not is_on_interactive_widget:
+                    self.deselect_all_frames()
+
+        return super().eventFilter(watched, event)
+
 
 
 if __name__ == "__main__":
