@@ -2,7 +2,7 @@ import sys
 import json
 import os
 from pathlib import Path
-from PySide6.QtCore import Qt, QSize, Signal
+from PySide6.QtCore import Qt, QSize, Signal, QRect, QTimer
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QFrame, 
     QLabel, QSplitter, QScrollArea, QPushButton, QToolButton, QTextEdit, QFileDialog
@@ -24,8 +24,9 @@ class QtBlock(QFrame):
 
 class QtFrame(QFrame):
     # QtFrameウィジェットを初期化します。
-    def __init__(self, number, parent=None):
+    def __init__(self, number, scroll_area, parent=None):
         super().__init__(parent)
+        self.scroll_area = scroll_area
         self.number = number
         self.blocks = []
         self.setStyleSheet("background-color: #2C2C2C; border: 1px solid #4A4A4A; border-radius: 5px;")
@@ -44,12 +45,38 @@ class QtFrame(QFrame):
         self.prev_sibling_widget = None # 前のフレームを格納するため
         self.setMouseTracking(True)
 
+        self.resize_timer = QTimer(self)
+        self.resize_timer.timeout.connect(self.auto_resize_step)
+        self.auto_resize_direction = None
+
     # フレームに新しいブロックを追加します。
     def add_block(self):
         block = QtBlock()
         self.main_layout.addWidget(block)
         self.blocks.append(block)
         return block
+
+    def auto_resize_step(self):
+        if not self.is_resizing or self.auto_resize_direction is None:
+            return
+
+        scroll_step = 10
+        current_width = self.width()
+        
+        if self.auto_resize_direction == 'right':
+            self.setFixedWidth(current_width + scroll_step)
+            current_scroll_value = self.scroll_area.horizontalScrollBar().value()
+            self.scroll_area.horizontalScrollBar().setValue(current_scroll_value + scroll_step)
+        
+        elif self.auto_resize_direction == 'left':
+            if self.prev_sibling_widget:
+                prev_width = self.prev_sibling_widget.width()
+                if prev_width > scroll_step and current_width > -scroll_step:
+                    self.prev_sibling_widget.setFixedWidth(prev_width - scroll_step)
+                    self.setFixedWidth(current_width + scroll_step)
+                    current_scroll_value = self.scroll_area.horizontalScrollBar().value()
+                    self.scroll_area.horizontalScrollBar().setValue(current_scroll_value - scroll_step)
+
 
     def mousePressEvent(self, event):
         edge = self.get_resize_edge(event.position().toPoint())
@@ -72,24 +99,39 @@ class QtFrame(QFrame):
     
     def mouseMoveEvent(self, event):
         if self.is_resizing:
-            delta = event.globalPosition().toPoint() - self.resize_start_pos
-            
-            if self.resizing_edge == 'right':
-                new_width = self.original_width + delta.x()
-                if new_width > 0:
-                    self.setFixedWidth(new_width)
-            
-            elif self.resizing_edge == 'left' and self.prev_sibling_widget:
-                # 前のフレームの新しい幅
-                new_prev_width = self.original_prev_sibling_width + delta.x()
-                # 現在のフレームの新しい幅
-                new_self_width = self.original_width - delta.x()
+            viewport = self.scroll_area.viewport()
+            viewport_rect = QRect(viewport.mapToGlobal(viewport.rect().topLeft()), viewport.mapToGlobal(viewport.rect().bottomRight()))
+            cursor_pos_x = event.globalPosition().x()
 
-                # 両方のフレームの幅が0より大きいことを確認してから適用
-                if new_prev_width > 0 and new_self_width > 0:
-                    self.prev_sibling_widget.setFixedWidth(new_prev_width)
-                    self.setFixedWidth(new_self_width)
-        
+            # Define the edge zones for auto-resizing
+            edge_zone_width = 40
+
+            if cursor_pos_x > viewport_rect.right() - edge_zone_width:
+                self.auto_resize_direction = 'right'
+                if not self.resize_timer.isActive():
+                    self.resize_timer.start(50)
+            elif cursor_pos_x < viewport_rect.left() + edge_zone_width:
+                self.auto_resize_direction = 'left'
+                if not self.resize_timer.isActive():
+                    self.resize_timer.start(50)
+            else:
+                if self.resize_timer.isActive():
+                    self.resize_timer.stop()
+                self.auto_resize_direction = None
+
+                # Manual resize logic
+                delta = event.globalPosition().toPoint() - self.resize_start_pos
+                if self.resizing_edge == 'right':
+                    new_width = self.original_width + delta.x()
+                    if new_width > 0:
+                        self.setFixedWidth(new_width)
+                elif self.resizing_edge == 'left' and self.prev_sibling_widget:
+                    new_prev_width = self.original_prev_sibling_width + delta.x()
+                    new_self_width = self.original_width - delta.x()
+                    if new_prev_width > 0 and new_self_width > 0:
+                        self.prev_sibling_widget.setFixedWidth(new_prev_width)
+                        self.setFixedWidth(new_self_width)
+
         elif self.get_resize_edge(event.position().toPoint()):
             self.setCursor(Qt.SizeHorCursor)
         else:
@@ -102,6 +144,9 @@ class QtFrame(QFrame):
             self.is_resizing = False
             self.resizing_edge = None
             self.prev_sibling_widget = None
+            if self.resize_timer.isActive():
+                self.resize_timer.stop()
+            self.auto_resize_direction = None
         super().mouseReleaseEvent(event)
 
     def get_resize_edge(self, pos):
@@ -237,7 +282,7 @@ class FlairApp(QMainWindow):
     # メインバーに新しいフレームを追加します。
     def add_frame(self):
         frame_number = len(self.frames) + 1
-        new_frame = QtFrame(frame_number)
+        new_frame = QtFrame(frame_number, self.mainbar_scroll_area)
         self.mainbar_layout.addWidget(new_frame)
         self.frames.append(new_frame)
         self.select_frame(new_frame)
