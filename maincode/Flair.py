@@ -2,21 +2,23 @@ import sys
 import json
 import os
 from pathlib import Path
-from PySide6.QtCore import Qt, QSize, Signal, QRect, QTimer, QEvent
+from PySide6.QtCore import Qt, QSize, Signal, QRect, QTimer, QEvent, QObject
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QFrame, 
     QLabel, QSplitter, QScrollArea, QPushButton, QToolButton, QTextEdit, QFileDialog,
-    QScrollBar
+    QScrollBar, QSizePolicy
 )
 from PySide6.QtGui import QPalette, QColor, QIcon
 
 # --- カスタムウィジェット ---
 class QtBlock(QFrame):
     # QtBlockウィジェットを初期化します。
-    def __init__(self, parent=None):
+    def __init__(self, width, height, parent=None):
         super().__init__(parent)
         self.setStyleSheet("background-color: #333333; border: 1px solid #4A4A4A; border-radius: 4px;")
-        self.setMinimumHeight(40)
+        self.setMinimumWidth(1000)
+        # self.setFixedSize(width, height) # ブロックのサイズを固定 (コメントアウト)
+        self.setFixedHeight(height) # ブロックの高さを固定し、幅はレイアウトに任せる
         
         layout = QVBoxLayout(self)
         self.text_edit = QTextEdit()
@@ -31,14 +33,23 @@ class QtFrame(QFrame):
         self.number = number
         self.blocks = []
         self.setStyleSheet("background-color: #2C2C2C; border: 1px solid #4A4A4A; border-radius: 5px;")
-        self.setMinimumWidth(240)
+        self.setMinimumWidth(300) # 最低のフレームの横幅を決める
 
         self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(10, 10, 10, 10) # 左、上、右、下の順でフレームと要素の間を決める
+        self.main_layout.setSpacing(10) # フレームの要素と要素の間の空白を決める
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         title_label = QLabel(f"Frame {self.number}")
         title_label.setStyleSheet("color: #AAAAAA; padding: 5px;")
-        self.main_layout.addWidget(title_label)
+        title_label.setMinimumHeight(30) # 最低のラベルの横幅を決める
+
+        title_layout = QHBoxLayout()
+        title_layout.setContentsMargins(0, 0, 0, 0)
+        title_layout.addWidget(title_label)
+        title_layout.addStretch()
+
+        self.main_layout.addLayout(title_layout)
 
         self.is_resizing = False
         self.resizing_edge = None
@@ -51,11 +62,34 @@ class QtFrame(QFrame):
         self.auto_resize_direction = None
 
     # フレームに新しいブロックを追加します。
-    def add_block(self):
-        block = QtBlock()
-        self.main_layout.addWidget(block)
-        self.blocks.append(block)
+    def add_block(self, width, height):
+        block = QtBlock(width, height)
+        # 現在のブロック数 + 1 (タイトルレイアウトの分) が挿入位置
+        insert_index = len(self.blocks) + 1 
+        self.main_layout.insertWidget(insert_index, block, 0, Qt.AlignmentFlag.AlignTop)
+        self.blocks.append(block) # リストの末尾に追加
+        
+        # 追加したブロックの幅も即座に更新する
+        margins = self.main_layout.contentsMargins()
+        block_width = self.contentsRect().width() - margins.left() - margins.right()
+        if block_width < 0:
+            block_width = 0
+        block.setFixedWidth(block_width)
+        
         return block
+
+    def resizeEvent(self, event):
+        """フレームのリサイズ時に呼び出されるイベントハンドラ"""
+        super().resizeEvent(event)
+        # フレームの左右のマージン (10px * 2) を考慮
+        margins = self.main_layout.contentsMargins()
+        block_width = self.contentsRect().width() - margins.left() - margins.right()
+        
+        if block_width < 0:
+            block_width = 0
+
+        for block in self.blocks:
+            block.setFixedWidth(block_width)
 
     def auto_resize_step(self):
         if not self.is_resizing or self.auto_resize_direction is None:
@@ -104,8 +138,7 @@ class QtFrame(QFrame):
             viewport_rect = QRect(viewport.mapToGlobal(viewport.rect().topLeft()), viewport.mapToGlobal(viewport.rect().bottomRight()))
             cursor_pos_x = event.globalPosition().x()
 
-            # Define the edge zones for auto-resizing
-            edge_zone_width = 40
+            edge_zone_width = 40 # 自動リサイズ用の境界領域を定義する
 
             if cursor_pos_x > viewport_rect.right() - edge_zone_width:
                 self.auto_resize_direction = 'right'
@@ -173,6 +206,10 @@ class FlairApp(QMainWindow):
         self.selected_frame = None
         self.selected_block = None
 
+        # --- ブロックのデフォルトサイズ ---
+        self.block_width = 280
+        self.block_height = 80
+
         # --- スタイル変数 ---
         self.sidebar_button_color = "#65F4D4"
 
@@ -227,6 +264,7 @@ class FlairApp(QMainWindow):
         self.mainbar_scroll_area.setWidget(mainbar_content)
         self.mainbar_layout = QHBoxLayout(mainbar_content)
         self.mainbar_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.mainbar_layout.addStretch(1)
 
         # --- レイアウトへの追加 ---
         splitter.addWidget(self.sidebar)
@@ -286,14 +324,16 @@ class FlairApp(QMainWindow):
     def add_frame(self):
         frame_number = len(self.frames) + 1
         new_frame = QtFrame(frame_number, self.mainbar_scroll_area)
-        self.mainbar_layout.addWidget(new_frame)
+        # ストレッチ以外のウィジェットの数を挿入インデックスとする
+        insert_index = self.mainbar_layout.count() - 1
+        self.mainbar_layout.insertWidget(insert_index, new_frame)
         self.frames.append(new_frame)
         self.select_frame(new_frame)
 
     # 現在選択されているフレームにブロックを追加します。
     def add_block_to_selected_frame(self):
         if self.selected_frame:
-            self.selected_frame.add_block()
+            self.selected_frame.add_block(self.block_width, self.block_height)
 
     # 選択されたフレームをハイライトします。
     def select_frame(self, frame_to_select):
@@ -307,6 +347,23 @@ class FlairApp(QMainWindow):
     # すべてのフレームの選択を解除します。
     def deselect_all_frames(self):
         self.select_frame(None)
+
+    # 選択されたブロックをハイライトします。
+    def select_block(self, block_to_select):
+        self.selected_block = block_to_select
+        # すべてのフレームのすべてのブロックをチェック
+        for frame in self.frames:
+            for block in frame.blocks:
+                if block == block_to_select:
+                    # 選択時のスタイル
+                    block.setStyleSheet("background-color: #333333; border: 2px solid #4A90E2; border-radius: 4px;")
+                else:
+                    # 非選択時のスタイル
+                    block.setStyleSheet("background-color: #333333; border: 1px solid #4A4A4A; border-radius: 4px;")
+
+    # すべてのブロックの選択を解除します。
+    def deselect_all_blocks(self):
+        self.select_block(None)
 
     # JSONファイルを開き、データを読み込みます。
     def open_file(self):
@@ -322,9 +379,10 @@ class FlairApp(QMainWindow):
         self.frames.clear()
 
         for i, frame_data in enumerate(data):
-            new_frame = self.add_frame()
+            self.add_frame()
+            new_frame = self.frames[-1] # Get the newly added frame
             for block_texts in frame_data:
-                new_block = new_frame.add_block()
+                new_block = new_frame.add_block(self.block_width, self.block_height)
                 if block_texts:
                     new_block.text_edit.setText(block_texts[0])
 
@@ -358,35 +416,55 @@ class FlairApp(QMainWindow):
         if event.type() == QEvent.Type.MouseButtonPress:
             if event.button() == Qt.LeftButton:
                 clicked_widget = QApplication.widgetAt(event.globalPosition().toPoint())
+                
+                # ウィンドウ外のクリック
                 if not clicked_widget:
-                    self.deselect_all_frames() # Clicked outside the window
-                    return super().eventFilter(watched, event)
+                    self.deselect_all_frames()
+                    self.deselect_all_blocks()
+                    return False
 
                 ancestor = clicked_widget
                 clicked_frame = None
+                clicked_block = None
                 is_on_interactive_widget = False
 
+                # クリックされたウィジェットの祖先をたどり、ブロックとフレームを特定
                 while ancestor is not None:
+                    if clicked_block is None and isinstance(ancestor, QtBlock):
+                        clicked_block = ancestor
+                    
                     if isinstance(ancestor, QtFrame):
                         clicked_frame = ancestor
-                        break 
+                        break # フレームまで到達したら終了
+                    
                     if isinstance(ancestor, (QPushButton, QToolButton, QScrollBar)):
                         is_on_interactive_widget = True
                         break
                     ancestor = ancestor.parent()
 
+                # フレームがクリックされた場合の処理
                 if clicked_frame:
                     self.select_frame(clicked_frame)
+                    # ブロックもクリックされていれば選択
+                    if clicked_block:
+                        self.select_block(clicked_block)
+                    # フレームのみクリックされた場合はブロックの選択を解除
+                    else:
+                        self.deselect_all_blocks()
+                # インタラクティブなウィジェット以外で、フレームの外側がクリックされた場合
                 elif not is_on_interactive_widget:
                     self.deselect_all_frames()
+                    self.deselect_all_blocks()
 
+            return False
+        
         return super().eventFilter(watched, event)
 
 
 
 if __name__ == "__main__":
     # Set QT_IM_MODULE for Japanese input support
-    os.environ['QT_IM_MODULE'] = 'fcitx' 
+    # os.environ['QT_IM_MODULE'] = 'fcitx' 
 
     app = QApplication(sys.argv)
 

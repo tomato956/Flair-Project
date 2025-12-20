@@ -1,17 +1,11 @@
-feat: Implement robust frame resizing and splitter behavior
+feat: ブロック選択機能と動的リサイズ機能の追加
 
-This commit introduces comprehensive frame resizing capabilities:
-- Frames can now be resized from both their left and right edges.
-- Implemented a splitter-like behavior where dragging the boundary between two frames resizes both adjacent frames simultaneously.
-- Removed minimum width constraints during resizing for more flexible control, ensuring widths remain positive.
+主な変更点：
+- ブロック選択機能を追加し、クリックされたブロックを青いボーダーでハイライトするようにしました。
+- フレームの幅に合わせて、内部のブロック幅も動的にリサイズされるように修正しました。
+  - `resizeEvent` と `contentsRect` を用いて、より正確な幅計算を実装。
 
-Bug Fixes:
-- Resolved an issue causing "very large movement" during left-edge resizing by correctly calculating width based on original dimensions.
-- Fixed `AttributeError: 'QtFrame' object has no attribute 'original_width'` by ensuring proper initialization.
-- Addressed a regression where frame resizing stopped working due to incorrect event propagation in `mousePressEvent`.
-
-Refactor:
-- Eliminated the use of a global `frames` list, refactoring `FlairApp` to manage frames using an instance variable (`self.frames`) for improved encapsulation and stability.
-
-Documentation:
-- Updated `GEMINI.md` with the latest changes and feature descriptions.
+修正点：
+- フレーム生成時に、意図せず幅が広がる問題を修正しました。
+- Windows環境で日本語入力ができない問題を修正しました。
+- イベント処理に関する`TypeError`を修正しました。
