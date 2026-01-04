@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QLabel, QSplitter, QScrollArea, QPushButton, QToolButton, QTextEdit, QFileDialog,
     QScrollBar, QSizePolicy
 )
-from PySide6.QtGui import QPalette, QColor, QIcon
+from PySide6.QtGui import QPalette, QColor, QIcon, QPainter, QPen
 
 # --- カスタムウィジェット ---
 class QtBlock(QFrame):
@@ -76,7 +76,33 @@ class QtFrame(QFrame):
             block_width = 0
         block.setFixedWidth(block_width)
         
+        self.update() # フレームを再描画して線を追加
+
         return block
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if len(self.blocks) < 2:
+            return
+
+        painter = QPainter(self)
+        pen = QPen(QColor("#555555"))
+        pen.setWidth(2)
+        painter.setPen(pen)
+
+        for i in range(len(self.blocks) - 1):
+            start_block = self.blocks[i]
+            end_block = self.blocks[i+1]
+
+            # 開始点: start_blockの下部中央
+            start_pos = start_block.geometry().bottomLeft()
+            start_pos.setX(start_pos.x() + start_block.width() / 2)
+
+            # 終了点: end_blockの上部中央
+            end_pos = end_block.geometry().topLeft()
+            end_pos.setX(end_pos.x() + end_block.width() / 2)
+
+            painter.drawLine(start_pos, end_pos)
 
     def resizeEvent(self, event):
         """フレームのリサイズ時に呼び出されるイベントハンドラ"""
@@ -458,7 +484,27 @@ class FlairApp(QMainWindow):
 
             return False
         
-        return super().eventFilter(watched, event)
+        # MouseButtonPress以外のイベントは、ここで処理を終了し、Falseを返す
+        # これにより、イベントは通常の経路で処理され続けるが、
+        # このeventFilterでは何もせず、super().eventFilterを不必要に呼び出さない
+        return False
+
+    def keyPressEvent(self, event):
+        # Ctrlキーが押された場合
+        if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
+            if event.key() == Qt.Key.Key_B:
+                self.add_block_to_selected_frame()
+            if event.key() == Qt.Key.Key_F:
+                self.add_frame()
+            # if event.key() == Qt.Key.Key_Up:
+            #     self.selected_block_up()
+            # if event.key() == Qt.Key.Key_Down:
+            #     self.selected_block_down()
+            # if event.key() == Qt.Key.Key_Left:
+            #     self.selected_block_left()
+            # if event.key() == Qt.Key.Key_Right:
+            #     self.selected_block_right()
+        super().keyPressEvent(event)
 
 
 
