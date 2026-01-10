@@ -50,6 +50,7 @@ class QtFrame(QFrame):
         title_layout.addStretch()
 
         self.main_layout.addLayout(title_layout)
+        self.main_layout.addStretch(1) # 余白を吸収するストレッチを追加
 
         self.is_resizing = False
         self.resizing_edge = None
@@ -64,8 +65,8 @@ class QtFrame(QFrame):
     # フレームに新しいブロックを追加します。
     def add_block(self, width, height):
         block = QtBlock(width, height)
-        # 現在のブロック数 + 1 (タイトルレイアウトの分) が挿入位置
-        insert_index = len(self.blocks) + 1 
+        # ストレッチ(常に最後の要素)の前にブロックを挿入する
+        insert_index = self.main_layout.count() - 1
         self.main_layout.insertWidget(insert_index, block, 0, Qt.AlignmentFlag.AlignTop)
         self.blocks.append(block) # リストの末尾に追加
         
@@ -240,6 +241,8 @@ class FlairApp(QMainWindow):
         self.sidebar_button_color = "#65F4D4"
 
         self.script_dir = Path(__file__).parent.parent
+        
+        self.pressed_keys = set() # 押されているキーを追跡するためのセット
 
         self.init_ui()
 
@@ -383,6 +386,8 @@ class FlairApp(QMainWindow):
                 if block == block_to_select:
                     # 選択時のスタイル
                     block.setStyleSheet("background-color: #333333; border: 2px solid #4A90E2; border-radius: 4px;")
+                    # 対応するテキストボックスにフォーカスを当てる
+                    block.text_edit.setFocus()
                 else:
                     # 非選択時のスタイル
                     block.setStyleSheet("background-color: #333333; border: 1px solid #4A4A4A; border-radius: 4px;")
@@ -438,7 +443,107 @@ class FlairApp(QMainWindow):
             widget = widget.parent()
         return None
 
+    def select_frame_left(self):
+        """選択されているフレームの選択を一つ左に移します。"""
+        if not self.frames:
+            return
+
+        if not self.selected_frame:
+            self.select_frame(self.frames[-1])
+            return
+
+        try:
+            current_index = self.frames.index(self.selected_frame)
+        except ValueError:
+            return
+
+        if current_index > 0:
+            self.select_frame(self.frames[current_index - 1])
+
+    def select_frame_right(self):
+        """選択されているフレームの選択を一つ右に移します。"""
+        if not self.frames:
+            return
+
+        if not self.selected_frame:
+            self.select_frame(self.frames[0])
+            return
+            
+        try:
+            current_index = self.frames.index(self.selected_frame)
+        except ValueError:
+            return
+
+        if current_index < len(self.frames) - 1:
+            self.select_frame(self.frames[current_index + 1])
+
+    def selected_block_up(self):
+        """選択されているブロックの選択を一つ上に移します。"""
+        if not self.selected_frame or not self.selected_frame.blocks:
+            return
+
+        # ブロックが選択されていない場合、最後のブロックを選択する
+        if not self.selected_block:
+            self.select_block(self.selected_frame.blocks[-1])
+            return
+
+        try:
+            current_index = self.selected_frame.blocks.index(self.selected_block)
+        except ValueError:
+            return
+
+        # 一番上でなければ、一つ上のブロックを選択する
+        if current_index > 0:
+            self.select_block(self.selected_frame.blocks[current_index - 1])
+
+    def selected_block_down(self):
+        """選択されているブロックの選択を一つ下に移します。"""
+        if not self.selected_frame or not self.selected_frame.blocks:
+            return
+
+        # ブロックが選択されていない場合、最初のブロックを選択する
+        if not self.selected_block:
+            self.select_block(self.selected_frame.blocks[0])
+            return
+            
+        try:
+            current_index = self.selected_frame.blocks.index(self.selected_block)
+        except ValueError:
+            return
+
+        # 一番下でなければ、一つ下のブロックを選択する
+        if current_index < len(self.selected_frame.blocks) - 1:
+            self.select_block(self.selected_frame.blocks[current_index + 1])
+
     def eventFilter(self, watched, event):
+        # --- キーイベントの処理 ---
+        if event.type() == QEvent.Type.KeyPress:
+            self.pressed_keys.add(event.key())
+
+            # ブロック選択移動 (Ctrl + Alt + ↑/↓)
+            required_keys_block = {Qt.Key.Key_Control, Qt.Key.Key_Alt}
+            if required_keys_block.issubset(self.pressed_keys):
+                if event.key() == Qt.Key.Key_Up:
+                    self.selected_block_up()
+                    return True # イベントを消費
+                if event.key() == Qt.Key.Key_Down:
+                    self.selected_block_down()
+                    return True # イベントを消費
+
+            # フレーム選択移動 (Ctrl + Tab + ←/→)
+            required_keys_frame = {Qt.Key.Key_Control, Qt.Key.Key_Tab}
+            if required_keys_frame.issubset(self.pressed_keys):
+                if event.key() == Qt.Key.Key_Left:
+                    self.select_frame_left()
+                    return True
+                if event.key() == Qt.Key.Key_Right:
+                    self.select_frame_right()
+                    return True
+
+        if event.type() == QEvent.Type.KeyRelease:
+            self.pressed_keys.discard(event.key())
+        
+        # --- マウスプレスイベントの処理 ---
         if event.type() == QEvent.Type.MouseButtonPress:
             if event.button() == Qt.LeftButton:
                 clicked_widget = QApplication.widgetAt(event.globalPosition().toPoint())
@@ -484,26 +589,16 @@ class FlairApp(QMainWindow):
 
             return False
         
-        # MouseButtonPress以外のイベントは、ここで処理を終了し、Falseを返す
-        # これにより、イベントは通常の経路で処理され続けるが、
-        # このeventFilterでは何もせず、super().eventFilterを不必要に呼び出さない
+        # このフィルターで処理しない他のすべてのイベント
         return False
 
     def keyPressEvent(self, event):
-        # Ctrlキーが押された場合
+        # Ctrlキーが押された場合 (シンプルなショートカットはこちらで処理)
         if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
             if event.key() == Qt.Key.Key_B:
                 self.add_block_to_selected_frame()
             if event.key() == Qt.Key.Key_F:
                 self.add_frame()
-            # if event.key() == Qt.Key.Key_Up:
-            #     self.selected_block_up()
-            # if event.key() == Qt.Key.Key_Down:
-            #     self.selected_block_down()
-            # if event.key() == Qt.Key.Key_Left:
-            #     self.selected_block_left()
-            # if event.key() == Qt.Key.Key_Right:
-            #     self.selected_block_right()
         super().keyPressEvent(event)
 
 
